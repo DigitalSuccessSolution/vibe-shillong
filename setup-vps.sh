@@ -1,55 +1,54 @@
 #!/bin/bash
 # ==============================================================================
-# Automated VPS Deployment Script for vibeshillong.com
-# Ubuntu / Debian 20.04 / 22.04 LTS
+# Safe Multi-Project VPS Deployment Script for vibeshillong.com
+# Safely co-exists with other websites and PM2 apps on the same VPS!
 # ==============================================================================
 
 set -e
 
-echo "🚀 [1/6] Updating system packages..."
-sudo apt update && sudo apt upgrade -y
+APP_DIR="/var/www/vibeshillong"
 
-echo "📦 [2/6] Installing Node.js 20.x, Git, Nginx, and Certbot..."
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs git nginx certbot python3-certbot-nginx
+echo "📂 [1/4] Preparing isolated folder at $APP_DIR..."
+sudo mkdir -p $APP_DIR
+sudo chown -R $USER:$USER $APP_DIR
 
-echo "⚙️ [3/6] Installing PM2 Process Manager globally..."
-sudo npm install -g pm2
-
-echo "📂 [4/6] Setting up project directory at /var/www/vibe-shillong..."
-sudo mkdir -p /var/www/vibe-shillong
-sudo chown -R $USER:$USER /var/www/vibe-shillong
-
-if [ ! -d "/var/www/vibe-shillong/.git" ]; then
-    git clone https://github.com/DigitalSuccessSolution/vibe-shillong.git /var/www/vibe-shillong
+if [ ! -d "$APP_DIR/.git" ]; then
+    echo "Cloning repository..."
+    git clone https://github.com/DigitalSuccessSolution/vibe-shillong.git $APP_DIR
+else
+    echo "Updating existing repository..."
+    cd $APP_DIR && git pull origin main
 fi
 
-cd /var/www/vibe-shillong
-git pull origin main
+cd $APP_DIR
 
-echo "🏗️ [5/6] Building Frontend..."
+echo "🏗️ [2/4] Building Frontend..."
 npm install
 npm run build
 
-echo "🔧 [6/6] Installing Backend Dependencies..."
-cd /var/www/vibe-shillong/server
+echo "🔧 [3/4] Installing Backend Dependencies..."
+cd $APP_DIR/server
 npm install
 
-echo "✅ Base setup complete!"
+echo "✅ Code ready in $APP_DIR!"
 echo ""
-echo "👉 NEXT STEPS:"
-echo "1. Create /var/www/vibe-shillong/server/.env with your secrets:"
-echo "   nano /var/www/vibe-shillong/server/.env"
+echo "👉 NEXT STEPS FOR MULTI-PROJECT VPS:"
+echo "1. Check if port 5005 is free (or choose another port):"
+echo "   sudo lsof -i :5005 || sudo netstat -tuln | grep 5005"
 echo ""
-echo "2. Start Backend with PM2:"
-echo "   pm2 start server.js --name 'vibe-backend'"
-echo "   pm2 save && pm2 startup"
+echo "2. Create server/.env file:"
+echo "   nano $APP_DIR/server/.env"
+echo "   (Make sure PORT=5005)"
 echo ""
-echo "3. Copy Nginx Configuration:"
-echo "   sudo cp /var/www/vibe-shillong/nginx-vibeshillong.conf /etc/nginx/sites-available/vibeshillong.com"
-echo "   sudo ln -s /etc/nginx/sites-available/vibeshillong.com /etc/nginx/sites-enabled/"
-echo "   sudo nginx -t && sudo systemctl restart nginx"
+echo "3. Start Backend in PM2 without disturbing other apps:"
+echo "   cd $APP_DIR/server"
+echo "   pm2 start server.js --name 'vibeshillong-backend'"
+echo "   pm2 save"
 echo ""
-echo "4. Obtain Free SSL (HTTPS):"
+echo "4. Add independent Nginx config (Does NOT touch other sites):"
+echo "   sudo cp $APP_DIR/nginx-vibeshillong.conf /etc/nginx/sites-available/vibeshillong.com"
+echo "   sudo ln -sf /etc/nginx/sites-available/vibeshillong.com /etc/nginx/sites-enabled/"
+echo "   sudo nginx -t && sudo systemctl reload nginx"
+echo ""
+echo "5. Issue SSL for vibeshillong.com only:"
 echo "   sudo certbot --nginx -d vibeshillong.com -d www.vibeshillong.com"
-echo ""
