@@ -164,49 +164,17 @@ export default function InquiriesPage() {
             />
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10 text-xs">
-            <button
-              onClick={() => setStatusFilter('ALL')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                statusFilter === 'ALL'
-                  ? 'bg-neon-cyan text-[#071016]'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              All ({totalCount})
-            </button>
-            <button
-              onClick={() => setStatusFilter('NEW')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                statusFilter === 'NEW'
-                  ? 'bg-amber-400 text-[#071016]'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              New ({newCount})
-            </button>
-            <button
-              onClick={() => setStatusFilter('CONTACTED')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                statusFilter === 'CONTACTED'
-                  ? 'bg-neon-pink text-white'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Contacted ({contactedCount})
-            </button>
-            <button
-              onClick={() => setStatusFilter('RESOLVED')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                statusFilter === 'RESOLVED'
-                  ? 'bg-emerald-400 text-[#071016]'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Resolved ({resolvedCount})
-            </button>
-          </div>
+          {/* Status Filter Dropdown */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 bg-black/50 border border-white/15 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-neon-cyan cursor-pointer"
+          >
+            <option value="ALL" className="bg-[#0f091f]">All Status ({totalCount})</option>
+            <option value="NEW" className="bg-[#0f091f]">New ({newCount})</option>
+            <option value="CONTACTED" className="bg-[#0f091f]">Contacted ({contactedCount})</option>
+            <option value="RESOLVED" className="bg-[#0f091f]">Resolved ({resolvedCount})</option>
+          </select>
 
           {/* Refresh & CSV */}
           <button
