@@ -202,7 +202,7 @@ export default function InquiriesPage() {
             <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider font-bold">
               <th className="py-3 px-4">Date & Time</th>
               <th className="py-3 px-4">Name</th>
-              <th className="py-3 px-4">Phone / WhatsApp</th>
+              <th className="py-3 px-4">Phone</th>
               <th className="py-3 px-4">Email</th>
               <th className="py-3 px-4">Subject</th>
               <th className="py-3 px-4">Message</th>
@@ -237,8 +237,6 @@ export default function InquiriesPage() {
                   minute: '2-digit',
                   hour12: true,
                 })
-                const rawPhone = (inquiry.phone || '').replace(/\D/g, '')
-                const waPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone
                 const currentStatus = inquiry.status || 'NEW'
 
                 return (
@@ -258,40 +256,14 @@ export default function InquiriesPage() {
                       {inquiry.name}
                     </td>
 
-                    {/* Phone & WhatsApp */}
-                    <td className="py-3.5 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={`tel:${inquiry.phone}`}
-                          className="text-white/80 hover:text-white font-mono hover:underline"
-                        >
-                          {inquiry.phone}
-                        </a>
-                        {waPhone && (
-                          <a
-                            href={`https://wa.me/${waPhone}?text=Hi%20${encodeURIComponent(
-                              inquiry.name
-                            )},%20this%20is%20regarding%20your%20inquiry%20for%20VYBE%20Shillong%20Festival.`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-1 rounded bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-                            title="WhatsApp"
-                          >
-                            <MessageCircle size={13} />
-                          </a>
-                        )}
-                      </div>
+                    {/* Phone */}
+                    <td className="py-3.5 px-4 font-mono text-white/80 whitespace-nowrap">
+                      {inquiry.phone || '—'}
                     </td>
 
                     {/* Email */}
-                    <td className="py-3.5 px-4 text-white/70 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                      <a
-                        href={`mailto:${inquiry.email}`}
-                        className="hover:text-neon-cyan hover:underline flex items-center gap-1 font-mono"
-                      >
-                        <Mail size={12} className="text-white/40" />
-                        <span>{inquiry.email}</span>
-                      </a>
+                    <td className="py-3.5 px-4 font-mono text-white/80 whitespace-nowrap">
+                      {inquiry.email || '—'}
                     </td>
 
                     {/* Subject */}
