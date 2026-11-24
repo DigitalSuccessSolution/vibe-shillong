@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@theme {
+  --color-neon-pink: #ff35c4;
+  --color-neon-cyan: #35eaff;
+  --color-neon-lime: #c8ff3d;
+  --color-neon-bg: #080612;
+  --color-neon-surface: #100b20;
+  --color-neon-muted: #b8b1c8;
+  --color-neon-faint: #9b93ad;
+  --font-space: 'Space Grotesk', sans-serif;
+  --font-dm: 'DM Sans', sans-serif;
+}
+
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #f8f5ff;
+  background-color: #080612;
+  scroll-behavior: smooth;
+}
+
+/* Animated Flowing Gradient Text Effect (Pink -> Purple -> Cyan -> Pink) */
+@keyframes text-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes text-scan {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.gradient-text {
+  background: linear-gradient(
+    90deg,
+    #ff2eb4 0%,
+    #a855f7 25%,
+    #38bdf8 50%,
+    #c8ff3d 75%,
+    #ff2eb4 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+  animation: text-flow 5s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(255, 53, 196, 0.35));
+}
+
+/* Liquid Shimmer Text Effect - continuous light wave flowing through text */
+.text-shimmer-flow {
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #ffffff 20%,
+    #ff35c4 40%,
+    #35eaff 60%,
+    #ffffff 80%,
+    #ffffff 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+  animation: text-scan 4s linear infinite;
+}
+
+/* Equalizer Beat Bounce Animation */
+@keyframes eq-bounce {
+  0% { transform: scaleY(1); }
+  100% { transform: scaleY(0.2); }
+}
+
+.animate-eq-bounce {
+  animation: eq-bounce 1s ease-in-out infinite alternate;
+}
+
+/* Live Pulse Dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease infinite;
+}
+
+/* Infinite Marquee Ticker */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}
+
+/* Infinite Gallery Carousel Scroll */
+@keyframes gallery-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-gallery-scroll {
+  animation: gallery-scroll 35s linear infinite;
+}
+
+/* Invisible smooth scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Print Ticket Isolation: Prints ONLY the official pass on download/print */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #printable-ticket, #printable-ticket * {
+    visibility: visible !important;
+  }
+  #printable-ticket {
+    position: fixed !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 90% !important;
+    max-width: 560px !important;
+    margin: 0 !important;
+    background: #0d071a !important;
+    color: #ffffff !important;
+    border: 2px solid #ff35c4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+  }
+}

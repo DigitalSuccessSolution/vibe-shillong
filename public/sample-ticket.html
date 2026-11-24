@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VIBE Shillong - Official Festival Ticket Pass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Space+Grotesk:wght@600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-pink: #ff35c4;
+      --neon-cyan: #35eaff;
+      --neon-lime: #00ff88;
+      --bg-dark: #070311;
+      --ticket-bg: #0d071a;
+      --stub-bg: #070312;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: radial-gradient(circle at 50% 20%, rgba(255, 53, 196, 0.15), transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(53, 234, 255, 0.1), transparent 45%);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    /* Action Control Bar (Hidden in Print) */
+    .action-bar {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+      gap: 12px;
+    }
+
+    .back-btn {
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+    .back-btn:hover {
+      color: #ffffff;
+    }
+
+    .btn-print {
+      cursor: pointer;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 800;
+      background: var(--neon-pink);
+      color: #080311;
+      box-shadow: 0 0 25px rgba(255, 53, 196, 0.45);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-print:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    /* Authentic Physical Concert Ticket Container with Pure Transparent Notches */
+    .ticket-pass {
+      width: 100%;
+      max-width: 680px;
+      background: var(--ticket-bg);
+      border: 2px solid var(--neon-pink);
+      border-radius: 28px;
+      box-shadow: 0 0 60px rgba(255, 53, 196, 0.28), 0 25px 50px rgba(0, 0, 0, 0.9);
+      position: relative;
+      display: grid;
+      grid-template-columns: 1.8fr 1fr;
+      -webkit-mask: radial-gradient(15px at 64.2857% 0, transparent 15px, black 15.5px) top / 100% 51% no-repeat,
+                    radial-gradient(15px at 64.2857% 100%, transparent 15px, black 15.5px) bottom / 100% 51% no-repeat;
+      mask: radial-gradient(15px at 64.2857% 0, transparent 15px, black 15.5px) top / 100% 51% no-repeat,
+            radial-gradient(15px at 64.2857% 100%, transparent 15px, black 15.5px) bottom / 100% 51% no-repeat;
+    }
+
+    /* Ambient corner glow inside card */
+    .ticket-glow-wrap {
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .ticket-glow {
+      position: absolute;
+      top: -60px;
+      left: -60px;
+      width: 180px;
+      height: 180px;
+      background: var(--neon-pink);
+      opacity: 0.2;
+      border-radius: 50%;
+      filter: blur(40px);
+    }
+
+    /* ========================================= */
+    /* LEFT SECTION - MAIN CONCERT PASS */
+    /* ========================================= */
+    .main-section {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 16px;
+    }
+
+    .brand-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      mix-blend-mode: screen;
+    }
+
+    .brand-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #ffffff;
+      line-height: 1.1;
+    }
+
+    .brand-sub {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    .pass-pill {
+      background: var(--neon-pink);
+      color: #080311;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      box-shadow: 0 0 16px rgba(255, 53, 196, 0.4);
+    }
+
+    .attendee-block span {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: rgba(255, 255, 255, 0.4);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .attendee-block h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #ffffff;
+    }
+
+    /* 2-Column Boarding-Pass Event Specs */
+    .specs-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 12px 14px;
+      text-align: center;
+    }
+
+    .spec-item {
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0 8px;
+    }
+    .spec-item:last-child {
+      border-right: none;
+    }
+
+    .spec-label {
+      font-size: 9px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255, 255, 255, 0.4);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .spec-val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .venue-info {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.5;
+    }
+
+    .meta-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 14px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(0, 255, 136, 0.12);
+      border: 1px solid rgba(0, 255, 136, 0.35);
+      color: var(--neon-lime);
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .barcode-lines {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      letter-spacing: 4px;
+      color: rgba(255, 255, 255, 0.3);
+      user-select: none;
+    }
+
+    /* ========================================= */
+    /* RIGHT SECTION - TEAR-OFF GATE STUB */
+    /* ========================================= */
+    .stub-section {
+      background: var(--stub-bg);
+      border-left: 2px dashed rgba(255, 255, 255, 0.16);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Ticket Circular Notches (Top & Bottom) with Inward Curving Pink Border */
+    .notch-svg {
+      position: absolute;
+      left: 64.2857%;
+      transform: translateX(-50%);
+      z-index: 30;
+      pointer-events: none;
+    }
+    .notch-top {
+      top: -2px;
+    }
+    .notch-bottom {
+      bottom: -2px;
+    }
+
+    .stub-heading {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.4);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .qr-card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 14px 12px 10px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+
+    .qr-card svg {
+      width: 125px;
+      height: 125px;
+      display: block;
+    }
+
+    .qr-caption {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 800;
+      color: #0d071a;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+
+    .stub-code-block {
+      margin-top: 14px;
+    }
+
+    .stub-code-label {
+      font-size: 9px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.4);
+      display: block;
+    }
+
+    .stub-code-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--neon-pink);
+      letter-spacing: 1.5px;
+      margin-top: 2px;
+    }
+
+    .stub-sub {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.35);
+      margin-top: 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Print Stylesheet */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+      }
+      .action-bar {
+        display: none !important;
+      }
+      .ticket-pass {
+        border: 2px solid #000000 !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 20px auto !important;
+        page-break-inside: avoid;
+      }
+      .main-section, .stub-section {
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      .stub-section {
+        border-left: 2px dashed #000000 !important;
+      }
+      .notch {
+        background: #ffffff !important;
+        border-color: #000000 !important;
+      }
+      .brand-title, .attendee-block h2, .spec-val {
+        color: #000000 !important;
+      }
+      .pass-pill {
+        background: #000000 !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+      }
+      .stub-code-val {
+        color: #000000 !important;
+      }
+      .specs-grid {
+        background: #f4f4f4 !important;
+        border-color: #cccccc !important;
+      }
+      .spec-item {
+        border-right-color: #cccccc !important;
+      }
+      .status-badge {
+        background: #e6ffe6 !important;
+        border-color: #00aa00 !important;
+        color: #008800 !important;
+      }
+      .barcode-lines {
+        color: #000000 !important;
+      }
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 620px) {
+      .ticket-pass {
+        grid-template-columns: 1fr;
+      }
+      .stub-section {
+        border-left: none;
+        border-top: 2px dashed rgba(255, 255, 255, 0.16);
+      }
+      .notch-top {
+        display: none;
+      }
+      .notch-bottom {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Action Bar -->
+  <div class="action-bar">
+    <a href="/" class="back-btn">
+      ← Back to Festival Landing
+    </a>
+    <button onclick="downloadTicketImage()" id="download-btn" class="btn-print">
+      📥 Download Ticket (PNG)
+    </button>
+  </div>
+
+  <!-- Ticket with Inward-Curving Border Cutouts -->
+  <div class="ticket-pass" id="printable-ticket">
+    <div class="ticket-glow-wrap"><div class="ticket-glow"></div></div>
+
+    <!-- TOP NOTCH: Pink border curves INSIDE the ticket notch with NO bg color -->
+    <svg class="notch-svg notch-top" viewBox="0 0 32 18" width="32" height="18">
+      <path d="M 1,2 A 15,15 0 0,0 31,2" fill="none" stroke="#ff35c4" stroke-width="2" stroke-linecap="round" />
+    </svg>
+
+    <!-- BOTTOM NOTCH: Pink border curves INSIDE the ticket notch with NO bg color -->
+    <svg class="notch-svg notch-bottom" viewBox="0 0 32 18" width="32" height="18">
+      <path d="M 1,16 A 15,15 0 0,1 31,16" fill="none" stroke="#ff35c4" stroke-width="2" stroke-linecap="round" />
+    </svg>
+
+    <!-- MAIN PASS (Left) -->
+    <div class="main-section">
+      <div class="brand-bar">
+        <div class="brand-left">
+          <img src="/logo.jpeg" alt="VIBE Shillong" class="brand-logo">
+          <div>
+            <div class="brand-title">VIBE SHILLONG</div>
+            <div class="brand-sub">Official Festival Pass · 2026</div>
+          </div>
+        </div>
+        <div class="pass-pill">ADULT PASS</div>
+      </div>
+
+      <div class="attendee-block">
+        <span>Attendee Name</span>
+        <h2>Dev</h2>
+      </div>
+
+      <div class="specs-grid">
+        <div class="spec-item">
+          <span class="spec-label">Date</span>
+          <span class="spec-val">12 DEC 2026</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">Timing</span>
+          <span class="spec-val" style="color: var(--neon-pink);">8:00 PM ONWARDS</span>
+        </div>
+      </div>
+
+      <div class="venue-info">
+        📍 <strong>F Lounge by FTV, Shillong</strong><br>
+        <span style="color: rgba(255, 255, 255, 0.5); font-size: 11px;">
+          Qty: 1 Pass • Admit One • Non-Transferable • Govt Photo ID Required
+        </span>
+      </div>
+
+      <div class="meta-footer">
+        <div class="status-badge">
+          ✓ Status: VALID
+        </div>
+        <div class="barcode-lines">
+          |||||||||||||||||||
+        </div>
+      </div>
+    </div>
+
+    <!-- ENTRY STUB (Right) -->
+    <div class="stub-section">
+      <div>
+        <div class="stub-heading">Digital Entry Stub</div>
+        <div class="qr-card">
+          <svg height="125" width="125" viewBox="0 0 21 21" role="img">
+            <path fill="#FFFFFF" d="M0,0 h21v21H0z" shape-rendering="crispEdges"></path>
+            <path fill="#000000" d="M0 0h7v1H0zM12 0h1v1H12zM14,0 h7v1H14zM0 1h1v1H0zM6 1h1v1H6zM9 1h2v1H9zM14 1h1v1H14zM20,1 h1v1H20zM0 2h1v1H0zM2 2h3v1H2zM6 2h1v1H6zM8 2h4v1H8zM14 2h1v1H14zM16 2h3v1H16zM20,2 h1v1H20zM0 3h1v1H0zM2 3h3v1H2zM6 3h1v1H6zM8 3h2v1H8zM11 3h1v1H11zM14 3h1v1H14zM16 3h3v1H16zM20,3 h1v1H20zM0 4h1v1H0zM2 4h3v1H2zM6 4h1v1H6zM8 4h1v1H8zM12 4h1v1H12zM14 4h1v1H14zM16 4h3v1H16zM20,4 h1v1H20zM0 5h1v1H0zM6 5h1v1H6zM8 5h1v1H8zM11 5h1v1H11zM14 5h1v1H14zM20,5 h1v1H20zM0 6h7v1H0zM8 6h1v1H8zM10 6h1v1H10zM12 6h1v1H12zM14,6 h7v1H14zM8 7h3v1H8zM0 8h1v1H0zM2 8h5v1H2zM9 8h1v1H9zM11 8h1v1H11zM14 8h5v1H14zM1 9h5v1H1zM9 9h1v1H9zM12 9h1v1H12zM16 9h1v1H16zM19 9h1v1H19zM3 10h1v1H3zM6 10h4v1H6zM12 10h1v1H12zM15 10h2v1H15zM18 10h1v1H18zM20,10 h1v1H20zM1 11h2v1H1zM4 11h1v1H4zM10 11h1v1H10zM12 11h1v1H12zM14 11h1v1H14zM16 11h1v1H16zM19 11h1v1H19zM1 12h3v1H1zM6 12h1v1H6zM8 12h1v1H8zM12 12h3v1H12zM17 12h2v1H17zM8 13h1v1H8zM11 13h1v1H11zM16 13h2v1H16zM0 14h7v1H0zM9 14h1v1H9zM11 14h2v1H11zM14 14h2v1H14zM17 14h1v1H17zM19 14h1v1H19zM0 15h1v1H0zM6 15h1v1H6zM8 15h2v1H8zM11 15h2v1H11zM17 15h1v1H17zM19 15h1v1H19zM0 16h1v1H0zM2 16h3v1H2zM6 16h1v1H6zM8 16h1v1H8zM13 16h3v1H13zM18 16h1v1H18zM20,16 h1v1H20zM0 17h1v1H0zM2 17h3v1H2zM6 17h1v1H6zM8 17h5v1H8zM14 17h1v1H14zM17 17h1v1H17zM0 18h1v1H0zM2 18h3v1H2zM6 18h1v1H6zM8 18h1v1H8zM10 18h1v1H10zM12 18h1v1H12zM15 18h1v1H15zM17 18h2v1H17zM0 19h1v1H0zM6 19h1v1H6zM14 19h2v1H14zM17 19h1v1H17zM20,19 h1v1H20zM0 20h7v1H0zM8 20h8v1H8zM18 20h1v1H18z" shape-rendering="crispEdges"></path>
+          </svg>
+          <div class="qr-caption">Scan for Entry</div>
+        </div>
+      </div>
+
+      <div class="stub-code-block">
+        <span class="stub-code-label">Official Code</span>
+        <div class="stub-code-val">ADULT-6591-2B1</div>
+        <div class="stub-sub">1-Time Fast Scan</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 100% Native High-Resolution Direct Ticket PNG Download (No Print Dialog, Zero External CDN) -->
+  <script>
+    function downloadTicketImage() {
+      const btn = document.getElementById('download-btn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Generating Image...';
+      btn.disabled = true;
+
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1360;
+        canvas.height = 680;
+        const ctx = canvas.getContext('2d');
+
+        // Dark background
+        ctx.fillStyle = '#070311';
+        ctx.fillRect(0, 0, 1360, 680);
+
+        // Ticket card bounds
+        const tx = 80, ty = 60, tw = 1200, th = 560, radius = 40;
+        const stubX = tx + tw * 0.6428;
+
+        ctx.save();
+
+        // Authentic card path with inward curving circular notches
+        ctx.beginPath();
+        ctx.moveTo(tx + radius, ty);
+        ctx.lineTo(stubX - 25, ty);
+        // Top notch dipping inward
+        ctx.arc(stubX, ty, 25, Math.PI, 0, true);
+        ctx.lineTo(tx + tw - radius, ty);
+        ctx.arcTo(tx + tw, ty, tx + tw, ty + radius, radius);
+        ctx.lineTo(tx + tw, ty + th - radius);
+        ctx.arcTo(tx + tw, ty + th, tx + tw - radius, ty + th, radius);
+        ctx.lineTo(stubX + 25, ty + th);
+        // Bottom notch dipping inward
+        ctx.arc(stubX, ty + th, 25, 0, Math.PI, true);
+        ctx.lineTo(tx + radius, ty + th);
+        ctx.arcTo(tx, ty + th, tx, ty + th - radius, radius);
+        ctx.lineTo(tx, ty + radius);
+        ctx.arcTo(tx, ty, tx + radius, ty, radius);
+        ctx.closePath();
+
+        // Fill card background
+        ctx.fillStyle = '#0d071a';
+        ctx.fill();
+
+        // Stroke neon pink border
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#ff35c4';
+        ctx.shadowColor = '#ff35c4';
+        ctx.shadowBlur = 20;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Clip to ticket shape for inner content
+        ctx.clip();
+
+        // Stub background
+        ctx.fillStyle = '#070312';
+        ctx.fillRect(stubX, ty, tx + tw - stubX, th);
+
+        // Dashed divider line
+        ctx.beginPath();
+        ctx.setLineDash([12, 10]);
+        ctx.moveTo(stubX, ty + 25);
+        ctx.lineTo(stubX, ty + th - 25);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Main Pass Text & Info
+        ctx.font = 'bold 30px "Space Grotesk", sans-serif, Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('VIBE SHILLONG', tx + 50, ty + 70);
+
+        ctx.font = 'bold 16px "JetBrains Mono", monospace, Arial';
+        ctx.fillStyle = '#35eaff';
+        ctx.fillText('OFFICIAL FESTIVAL PASS · 2026', tx + 50, ty + 98);
+
+        // Pass Badge
+        const badgeText = 'ADULT PASS';
+        ctx.font = 'bold 18px "Space Grotesk", sans-serif, Arial';
+        const badgeW = ctx.measureText(badgeText).width + 36;
+        ctx.fillStyle = '#ff35c4';
+        ctx.beginPath();
+        ctx.roundRect(stubX - badgeW - 50, ty + 55, badgeW, 38, 20);
+        ctx.fill();
+        ctx.fillStyle = '#080612';
+        ctx.fillText(badgeText, stubX - badgeW - 32, ty + 80);
+
+        // Divider inside
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(tx + 50, ty + 125, stubX - tx - 100, 2);
+
+        // Attendee Name
+        ctx.font = '14px "JetBrains Mono", monospace, Arial';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText('ATTENDEE NAME', tx + 50, ty + 165);
+
+        ctx.font = 'bold 44px "Space Grotesk", sans-serif, Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('DEV', tx + 50, ty + 215);
+
+        // Specs Box
+        const boxX = tx + 50, boxY = ty + 250, boxW = stubX - tx - 100, boxH = 80;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 16);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(boxX + boxW / 2, boxY + 12, 2, boxH - 24);
+
+        ctx.font = '14px "JetBrains Mono", monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText('EVENT DATE', boxX + 30, boxY + 34);
+        ctx.font = 'bold 24px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('12 DEC 2026', boxX + 30, boxY + 64);
+
+        ctx.font = '14px "JetBrains Mono", monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText('TIMING', boxX + boxW / 2 + 30, boxY + 34);
+        ctx.font = 'bold 24px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#ff35c4';
+        ctx.fillText('8:00 PM ONWARDS', boxX + boxW / 2 + 30, boxY + 64);
+
+        // Venue Info
+        ctx.font = 'bold 20px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('📍 F Lounge by FTV, Shillong', tx + 50, ty + 380);
+
+        ctx.font = '16px "Space Grotesk", sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText('Qty: 1 Pass • Admit One • Non-Transferable • Govt Photo ID Required', tx + 50, ty + 412);
+
+        // Status Badge
+        ctx.fillStyle = 'rgba(0, 255, 136, 0.15)';
+        ctx.beginPath();
+        ctx.roundRect(tx + 50, ty + 450, 160, 40, 12);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 255, 136, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.font = 'bold 16px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText('✓ Status: VALID', tx + 68, ty + 476);
+
+        // Barcode Lines
+        ctx.font = '24px "JetBrains Mono", monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillText('||||||||||||||||||||||||', stubX - 340, ty + 478);
+
+        // Right Section: Stub
+        const stubCenter = stubX + (tx + tw - stubX) / 2;
+        ctx.font = 'bold 16px "JetBrains Mono", monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.textAlign = 'center';
+        ctx.fillText('DIGITAL ENTRY STUB', stubCenter, ty + 65);
+
+        // Draw QR Code onto Canvas
+        const qrSvg = document.querySelector('.qr-card svg');
+        const qrSvgString = new XMLSerializer().serializeToString(qrSvg);
+        const qrBlob = new Blob([qrSvgString], { type: 'image/svg+xml;charset=utf-8' });
+        const qrUrl = URL.createObjectURL(qrBlob);
+        const qrImg = new Image();
+
+        const triggerDownload = () => {
+          ctx.restore();
+          const link = document.createElement('a');
+          link.download = 'VIBE-Ticket-Pass.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          URL.revokeObjectURL(qrUrl);
+          btn.innerHTML = '✓ Downloaded!';
+          setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+          }, 2000);
+        };
+
+        qrImg.onload = function() {
+          const qrw = 230, qrh = 260;
+          const qrx = stubCenter - qrw / 2, qry = ty + 90;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.roundRect(qrx, qry, qrw, qrh, 24);
+          ctx.fill();
+
+          ctx.drawImage(qrImg, qrx + 20, qry + 15, 190, 190);
+
+          ctx.font = 'bold 14px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#070311';
+          ctx.textAlign = 'center';
+          ctx.fillText('SCAN FOR ENTRY', stubCenter, qry + 235);
+
+          ctx.font = '14px "JetBrains Mono", monospace';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+          ctx.fillText('OFFICIAL CODE', stubCenter, ty + 400);
+
+          ctx.font = 'bold 22px "JetBrains Mono", monospace';
+          ctx.fillStyle = '#ff35c4';
+          ctx.fillText('ADULT-6591-2B1', stubCenter, ty + 432);
+
+          ctx.font = '14px "JetBrains Mono", monospace';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.fillText('1-Time Fast Scan', stubCenter, ty + 468);
+
+          triggerDownload();
+        };
+
+        qrImg.onerror = function() {
+          triggerDownload();
+        };
+
+        qrImg.src = qrUrl;
+
+      } catch (err) {
+        console.error('Download error:', err);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

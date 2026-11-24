@@ -1,0 +1,378 @@
+import { useState } from 'react'
+import {
+  Search,
+  Clock,
+  CheckCircle2,
+  Calendar,
+  CreditCard,
+  QrCode,
+  X,
+  ArrowRight,
+  ShieldCheck,
+  User,
+  Phone,
+  Mail,
+} from 'lucide-react'
+
+export default function AttendeesPage({ ticketsList = [] }) {
+  const [attendeeFilter, setAttendeeFilter] = useState('all') // 'all' | 'USED' | 'VALID'
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedTicket, setSelectedTicket] = useState(null)
+
+  const totalSold = ticketsList.length
+  const totalScanned = ticketsList.filter((t) => t.status === 'USED').length
+  const totalPending = totalSold - totalScanned
+
+  const filteredAttendees = ticketsList.filter((t) => {
+    const matchesFilter =
+      attendeeFilter === 'all' ? true : t.status === attendeeFilter
+    const matchesSearch =
+      (t.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.ticketId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.customerPhone || '').includes(searchQuery)
+    return matchesFilter && matchesSearch
+  })
+
+  // Format Date and Time helper
+  const formatDateTime = (dateString) => {
+    if (!dateString) return null
+    try {
+      const d = new Date(dateString)
+      if (isNaN(d.getTime())) return null
+      return {
+        date: d.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        }),
+        time: d.toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        }),
+      }
+    } catch {
+      return null
+    }
+  }
+
+  return (
+    <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+      {/* Header and Filters */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
+        <div>
+          <h3 className="font-bold font-space text-xl text-white">Attendee Directory & Timeline</h3>
+          <p className="text-xs text-white/50">
+            Audit trail of ticket booking, payment mode, and gate check-in timestamps
+          </p>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+            <input
+              type="text"
+              placeholder="Search name, phone, ticket ID..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-black/50 border border-white/15 rounded-xl text-xs text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan w-56 sm:w-64"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10 text-xs">
+            <button
+              onClick={() => setAttendeeFilter('all')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                attendeeFilter === 'all'
+                  ? 'bg-neon-cyan text-[#071016]'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              All ({totalSold})
+            </button>
+            <button
+              onClick={() => setAttendeeFilter('USED')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                attendeeFilter === 'USED'
+                  ? 'bg-emerald-400 text-[#071016]'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              Checked-In ({totalScanned})
+            </button>
+            <button
+              onClick={() => setAttendeeFilter('VALID')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                attendeeFilter === 'VALID'
+                  ? 'bg-amber-400 text-[#071016]'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              Pending ({totalPending})
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Roster Table with Booking & Check-In Timelines */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider font-bold">
+              <th className="py-3 px-4">Ticket ID</th>
+              <th className="py-3 px-4">Attendee</th>
+              <th className="py-3 px-4">Pass & Mode</th>
+              <th className="py-3 px-4">Booked Date & Time</th>
+              <th className="py-3 px-4">Check-In Status & Time</th>
+              <th className="py-3 px-4 text-right">Audit</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {filteredAttendees.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="text-center py-10 text-white/40">
+                  No matching records found.
+                </td>
+              </tr>
+            ) : (
+              filteredAttendees.map((t) => {
+                const bookedDt = formatDateTime(t.createdAt)
+                const checkInDt = formatDateTime(t.scannedAt)
+
+                return (
+                  <tr
+                    key={t.ticketId}
+                    onClick={() => setSelectedTicket(t)}
+                    className="hover:bg-white/5 transition-colors cursor-pointer group"
+                  >
+                    {/* Ticket ID */}
+                    <td className="py-3.5 px-4 font-mono font-bold text-neon-cyan">
+                      {t.ticketId}
+                    </td>
+
+                    {/* Attendee Info */}
+                    <td className="py-3.5 px-4 font-bold text-white">
+                      <div>{t.customerName}</div>
+                      <div className="text-[11px] font-normal text-white/50">{t.customerPhone}</div>
+                    </td>
+
+                    {/* Pass Type & Payment Mode */}
+                    <td className="py-3.5 px-4">
+                      <div className="font-medium text-white capitalize">{t.eventType} Pass</div>
+                      <div className="text-[10px] text-neon-pink font-semibold flex items-center gap-1">
+                        <CreditCard size={11} />
+                        <span>{t.paymentMode || 'Online UPI'} • ₹{t.amountPaid}</span>
+                      </div>
+                    </td>
+
+                    {/* Booked Date & Time */}
+                    <td className="py-3.5 px-4">
+                      {bookedDt ? (
+                        <div>
+                          <div className="text-white font-medium">{bookedDt.date}</div>
+                          <div className="text-[11px] text-white/50 font-mono">{bookedDt.time}</div>
+                        </div>
+                      ) : (
+                        <span className="text-white/40">—</span>
+                      )}
+                    </td>
+
+                    {/* Check-In Date & Time / Status */}
+                    <td className="py-3.5 px-4">
+                      {t.status === 'USED' && checkInDt ? (
+                        <div>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 mb-1">
+                            <CheckCircle2 size={11} /> CHECKED-IN
+                          </span>
+                          <div className="text-[11px] text-emerald-200/80 font-mono">
+                            {checkInDt.date} at {checkInDt.time}
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 mb-0.5">
+                            <Clock size={11} /> PENDING ENTRY
+                          </span>
+                          <div className="text-[10px] text-white/40">Awaiting at gate</div>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Timeline Action Button */}
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedTicket(t)
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-neon-cyan/15 hover:bg-neon-cyan/25 border border-neon-cyan/30 text-neon-cyan text-[11px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        Timeline <ArrowRight size={11} />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* INTERACTIVE TIMELINE MODAL */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto no-scrollbar">
+          <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto bg-[#0d071a] border border-white/20 rounded-3xl p-6 sm:p-8 text-white my-auto no-scrollbar">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+              <div>
+                <span className="text-[10px] text-neon-cyan uppercase font-bold tracking-widest block">
+                  Complete Verification Audit
+                </span>
+                <h3 className="font-bold font-space text-xl text-white">
+                  Ticket Lifecycle Timeline
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedTicket(null)}
+                aria-label="Close modal"
+                className="text-white/60 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Attendee Snapshot */}
+            <div className="p-4 rounded-2xl bg-black/40 border border-white/10 grid grid-cols-2 gap-3 mb-6 text-xs">
+              <div>
+                <span className="text-[10px] text-white/40 uppercase block">Attendee</span>
+                <strong className="text-white text-sm">{selectedTicket.customerName}</strong>
+                <div className="text-[11px] text-white/60">{selectedTicket.customerPhone}</div>
+              </div>
+              <div>
+                <span className="text-[10px] text-white/40 uppercase block">Ticket ID</span>
+                <strong className="text-neon-cyan font-mono text-sm">{selectedTicket.ticketId}</strong>
+                <div className="text-[11px] text-neon-pink capitalize font-semibold">
+                  {selectedTicket.eventType} Pass • ₹{selectedTicket.amountPaid}
+                </div>
+              </div>
+            </div>
+
+            {/* Vertical Stepper Timeline */}
+            <div className="space-y-6 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-white/15 pl-10 text-xs">
+              {/* Event Schedule Info */}
+              <div className="relative">
+                <span className="absolute -left-10 top-0.5 w-8 h-8 rounded-full bg-[#180f2e] border-2 border-neon-pink text-neon-pink grid place-items-center">
+                  <Calendar size={14} />
+                </span>
+                <div>
+                  <h4 className="font-bold text-white text-sm">Festival Event Date</h4>
+                  <p className="text-white/70">Saturday, 12 December 2026</p>
+                  <p className="text-[11px] text-neon-cyan">Venue: F Lounge by FTV</p>
+                </div>
+              </div>
+
+              {/* Step 1: Ticket Booked */}
+              <div className="relative">
+                <span className="absolute -left-10 top-0.5 w-8 h-8 rounded-full bg-[#180f2e] border-2 border-emerald-400 text-emerald-400 grid place-items-center">
+                  <CreditCard size={14} />
+                </span>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <span>Ticket Booked & Payment Confirmed</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 font-bold">
+                      SUCCESS
+                    </span>
+                  </h4>
+                  {formatDateTime(selectedTicket.createdAt) ? (
+                    <p className="text-white/80 font-mono">
+                      📅 Date: {formatDateTime(selectedTicket.createdAt).date} at{' '}
+                      {formatDateTime(selectedTicket.createdAt).time}
+                    </p>
+                  ) : (
+                    <p className="text-white/60">Booking timestamp recorded</p>
+                  )}
+                  <p className="text-[11px] text-white/60">
+                    💳 Payment Mode: <strong className="text-white">{selectedTicket.paymentMode || 'Online UPI'}</strong>
+                  </p>
+                  <p className="text-[11px] text-white/50 font-mono">
+                    Ref ID: {selectedTicket.paymentId || 'PAY_OFFLINE'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 2: Digital QR Pass Issued */}
+              <div className="relative">
+                <span className="absolute -left-10 top-0.5 w-8 h-8 rounded-full bg-[#180f2e] border-2 border-neon-cyan text-neon-cyan grid place-items-center">
+                  <QrCode size={14} />
+                </span>
+                <div>
+                  <h4 className="font-bold text-white text-sm">Digital QR E-Pass Generated</h4>
+                  <p className="text-white/70">
+                    Unique encrypted QR token issued to attendee mobile for gate scanning.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3: Gate Check-In & Entry */}
+              <div className="relative">
+                <span
+                  className={`absolute -left-10 top-0.5 w-8 h-8 rounded-full grid place-items-center ${
+                    selectedTicket.status === 'USED'
+                      ? 'bg-emerald-950 border-2 border-emerald-400 text-emerald-400'
+                      : 'bg-amber-950 border-2 border-amber-400 text-amber-400'
+                  }`}
+                >
+                  {selectedTicket.status === 'USED' ? (
+                    <CheckCircle2 size={16} />
+                  ) : (
+                    <Clock size={16} />
+                  )}
+                </span>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <span>Gate Check-In & Entry</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        selectedTicket.status === 'USED'
+                          ? 'bg-emerald-500/20 text-emerald-300'
+                          : 'bg-amber-500/20 text-amber-300'
+                      }`}
+                    >
+                      {selectedTicket.status === 'USED' ? 'CHECKED-IN' : 'PENDING'}
+                    </span>
+                  </h4>
+                  {selectedTicket.status === 'USED' && formatDateTime(selectedTicket.scannedAt) ? (
+                    <>
+                      <p className="text-emerald-300 font-mono">
+                        ⏰ Check-In Time: {formatDateTime(selectedTicket.scannedAt).date} at{' '}
+                        {formatDateTime(selectedTicket.scannedAt).time}
+                      </p>
+                      <p className="text-[11px] text-white/50">
+                        Gate Officer: {selectedTicket.scannedBy || 'Gate 1 Scanner'}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-amber-200/80">
+                      Attendee has not checked in at the gate yet. Awaiting QR code scan at F Lounge by FTV.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="mt-8 pt-4 border-t border-white/10 flex items-center justify-end">
+              <button
+                onClick={() => setSelectedTicket(null)}
+                className="px-5 py-2.5 rounded-xl bg-neon-cyan text-[#071016] font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer"
+              >
+                Close Audit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
