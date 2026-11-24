@@ -36,7 +36,7 @@ export default function Hero({ onOpenBooking }) {
   }, [])
 
   return (
-    <section className="relative min-h-[calc(100vh-86px)] lg:h-[calc(100vh-86px)] py-6 sm:py-8 lg:py-0 w-full overflow-hidden flex items-center">
+    <section className="relative w-full overflow-hidden flex items-start lg:items-center pt-6 sm:pt-8 pb-8 sm:pb-12 lg:py-0 lg:h-[calc(100vh-86px)]">
       {/* Background DJ & Concert Crowd Atmosphere - Ultra-Sharp 4K Crossfade */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {bgImages.map((bg, index) => (
@@ -77,7 +77,7 @@ export default function Hero({ onOpenBooking }) {
         {/* Responsive Content Block - Perfectly aligned with Navbar and other sections */}
         <div className="flex flex-col justify-center max-w-xl lg:max-w-2xl text-left">
           {/* Responsive Heading */}
-          <h1 className="font-bold font-space text-[36px] xs:text-[44px] sm:text-[54px] md:text-[64px] lg:text-[70px] xl:text-[78px] leading-[0.93] tracking-tight sm:tracking-[-2px] lg:tracking-[-3px] text-white my-2 sm:my-3">
+          <h1 className="font-bold font-space text-[36px] xs:text-[44px] sm:text-[54px] md:text-[64px] lg:text-[70px] xl:text-[78px] leading-[0.98] sm:leading-[0.93] tracking-tight sm:tracking-[-2px] lg:tracking-[-3px] text-white my-2 sm:my-3">
             TWO <span className="gradient-text">NEON</span>
             <br />
             <span className="gradient-text">EVENTS.</span>

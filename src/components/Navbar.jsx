@@ -45,16 +45,16 @@ export default function Navbar({ onOpenBooking }) {
       {/* Permanent Fixed Header: Stays pinned and visible on scroll at all times */}
       <header className="fixed top-0 left-0 right-0 z-50 w-full">
         {/* Top Festive Announcement Bar */}
-        <div className="w-full bg-black/95 backdrop-blur-md text-white py-2 px-4 sm:px-8 text-xs font-dm">
-          <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+        <div className="w-full bg-black/95 backdrop-blur-md text-white py-1.5 px-3.5 sm:px-8 text-[11px] sm:text-xs font-dm border-b border-white/10">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
             {/* Festive Date & Venue */}
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-neon-pink animate-pulse" />
-              <span className="text-white/60 font-semibold uppercase tracking-wider text-[11px]">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-neon-pink animate-pulse shrink-0" />
+              <span className="text-white/60 font-semibold uppercase tracking-wider text-[10px] hidden sm:inline">
                 Festival Date:
               </span>
-              <span className="font-bold text-white tracking-wide">
-                Saturday, 12 December 2026
+              <span className="font-bold text-white tracking-wide text-[11px] sm:text-xs">
+                <span className="hidden sm:inline">Saturday, </span>12 Dec 2026
               </span>
               <span className="hidden sm:inline text-white/30">•</span>
               <span className="hidden sm:inline text-neon-cyan font-medium">
@@ -63,11 +63,14 @@ export default function Navbar({ onOpenBooking }) {
             </div>
 
             {/* Countdown Timer */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <span className="text-white/90 font-medium">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className="text-white/80 font-medium hidden md:inline">
                 Our Biggest Neon Fest Starts in
               </span>
-              <span className="font-bold text-white font-mono tracking-wide">
+              <span className="text-white/60 font-medium text-[10px] hidden xs:inline md:hidden">
+                Starts in
+              </span>
+              <span className="font-bold text-neon-lime font-mono tracking-tight sm:tracking-wide text-[11px] sm:text-xs bg-white/5 px-2 py-0.5 rounded border border-white/10">
                 {countdown.days}d : {countdown.hours}h : {countdown.minutes}m : {countdown.seconds}s
               </span>
             </div>
@@ -143,7 +146,7 @@ export default function Navbar({ onOpenBooking }) {
       </header>
 
       {/* Spacer to prevent page content from being pushed under fixed header */}
-      <div className="w-full h-[112px] sm:h-[118px]" aria-hidden="true" />
+      <div className="w-full h-[102px] sm:h-[108px]" aria-hidden="true" />
     </>
   )
 }

@@ -1,22 +1,52 @@
 /**
- * Generates responsive, dark-mode neon HTML email template for VIBE Shillong E-Passes.
- * Compatible with Gmail, Apple Mail, Outlook, and mobile email clients.
+ * Generates exact pixel-matched, fully-responsive replica of the UI Ticket Modal for VIBE Shillong E-Passes.
+ * Features 2-column desktop boarding pass and stacked 100% mobile view for Gmail, iOS Mail & Android.
  *
  * @param {Object} ticket - MongoDB Ticket document
  * @returns {string} Fully rendered HTML email string
  */
 export function generateTicketEmailHtml(ticket) {
-  const badgeText = ticket.eventType ? `${ticket.eventType.toUpperCase()} PASS CONFIRMED` : 'FESTIVAL PASS CONFIRMED'
-  const formattedAmount = Number(ticket.amountPaid || 0).toLocaleString('en-IN')
+  const eventTypeKey = (ticket.eventType || 'adult').toLowerCase()
+
+  const passColors = {
+    kids: {
+      border: '#35eaff',
+      badgeBg: '#35eaff',
+      badgeText: '#071016',
+      accent: '#35eaff',
+      glow: 'rgba(53, 234, 255, 0.25)',
+    },
+    adult: {
+      border: '#ff35c4',
+      badgeBg: '#ff35c4',
+      badgeText: '#080612',
+      accent: '#ff35c4',
+      glow: 'rgba(255, 53, 196, 0.25)',
+    },
+    vip: {
+      border: '#c8ff3d',
+      badgeBg: '#c8ff3d',
+      badgeText: '#080612',
+      accent: '#c8ff3d',
+      glow: 'rgba(200, 255, 61, 0.25)',
+    },
+  }
+
+  const theme = passColors[eventTypeKey] || passColors.adult
+  const ticketId = ticket.ticketId || 'NEON-VALID'
+  const customerName = (ticket.customerName || 'Verified Attendee').toUpperCase()
   const quantity = Number(ticket.quantity) || 1
+  const amountPaid = Number(ticket.amountPaid || 0).toLocaleString('en-IN')
 
   const eventTimings = {
     kids: '12:00 PM – 7:30 PM',
     adult: '8:00 PM Onwards',
     vip: '8:00 PM Onwards',
   }
-  const eventTypeKey = (ticket.eventType || 'adult').toLowerCase()
   const timingText = eventTimings[eventTypeKey] || '8:00 PM Onwards'
+
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticketId)}&color=080414&bgcolor=ffffff`
+  const downloadUrl = `https://vibeshillong.com/?ticket=${encodeURIComponent(ticketId)}&download=true`
 
   return `
 <!DOCTYPE html>
@@ -24,195 +54,246 @@ export function generateTicketEmailHtml(ticket) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your VIBE Shillong Festival Pass</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>VIBE Shillong Ticket Pass - ${ticketId}</title>
   <style>
     body {
-      margin: 0;
-      padding: 24px 12px;
-      background-color: #05020c;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      color: #ffffff;
-      -webkit-font-smoothing: antialiased;
+      margin: 0 !important;
+      padding: 0 !important;
+      background-color: #05020c !important;
     }
-    .wrapper {
-      max-width: 540px;
-      margin: 0 auto;
-      background: #0d071a;
-      border: 1px solid #ff35c4;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 10px 40px rgba(255, 53, 196, 0.2);
-    }
-    .header-banner {
-      background: linear-gradient(135deg, #1b0c33 0%, #0d071a 100%);
-      padding: 32px 24px 20px;
-      text-align: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .brand-title {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: 3px;
-      color: #ffffff;
-      margin: 0 0 6px 0;
-      text-transform: uppercase;
-    }
-    .brand-subtitle {
-      font-size: 11px;
-      font-weight: 700;
-      color: #35eaff;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      margin: 0;
-    }
-    .status-badge {
-      display: inline-block;
-      margin-top: 14px;
-      background: #ff35c4;
-      color: #06020e;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      padding: 6px 16px;
-      border-radius: 20px;
-    }
-    .content-body {
-      padding: 24px 28px;
-    }
-    .ticket-id-box {
-      background: rgba(53, 234, 255, 0.08);
-      border: 1px dashed rgba(53, 234, 255, 0.4);
-      border-radius: 14px;
-      padding: 16px;
-      text-align: center;
-      margin-bottom: 24px;
-    }
-    .ticket-id-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: #8f85a3;
-      margin-bottom: 4px;
-    }
-    .ticket-id-code {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 22px;
-      font-weight: 800;
-      color: #35eaff;
-      letter-spacing: 2px;
-    }
-    .info-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
-    }
-    .info-table td {
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      vertical-align: middle;
-    }
-    .info-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #8f85a3;
-      font-weight: 600;
-    }
-    .info-value {
-      font-size: 14px;
-      font-weight: 700;
-      color: #ffffff;
-      text-align: right;
-    }
-    .amount-highlight {
-      color: #00ff88;
-      font-size: 16px;
-      font-weight: 800;
-    }
-    .instructions-card {
-      background: rgba(255, 255, 255, 0.03);
-      border-radius: 12px;
-      padding: 14px 16px;
-      font-size: 12px;
-      line-height: 1.6;
-      color: #bbb3cb;
-      margin-top: 20px;
-    }
-    .footer-section {
-      background: #080311;
-      padding: 20px 24px;
-      text-align: center;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      font-size: 11px;
-      color: #6c6380;
-      line-height: 1.6;
+    @media only screen and (max-width: 580px) {
+      .outer-container {
+        padding: 12px 6px !important;
+      }
+      .ticket-wrapper {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 18px !important;
+      }
+      .ticket-col-main {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 18px 14px !important;
+      }
+      .ticket-col-stub {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        border-left: none !important;
+        border-top: 2px dashed rgba(255, 255, 255, 0.22) !important;
+        padding: 20px 14px !important;
+      }
+      .attendee-name {
+        font-size: 20px !important;
+      }
+      .download-btn {
+        width: 90% !important;
+        box-sizing: border-box !important;
+        padding: 14px 16px !important;
+        font-size: 13px !important;
+      }
     }
   </style>
 </head>
-<body>
-  <div class="wrapper">
-    <!-- Header Banner -->
-    <div class="header-banner">
-      <h1 class="brand-title">VIBE SHILLONG</h1>
-      <p class="brand-subtitle">Official Entry E-Pass</p>
-      <div class="status-badge">${badgeText}</div>
-    </div>
+<body style="margin: 0; padding: 0; background-color: #05020c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #ffffff; -webkit-font-smoothing: antialiased;">
 
-    <!-- Ticket Body -->
-    <div class="content-body">
-      <!-- Unique Ticket Code Box -->
-      <div class="ticket-id-box">
-        <div class="ticket-id-label">Official Ticket ID</div>
-        <div class="ticket-id-code">${ticket.ticketId}</div>
-      </div>
+  <!-- Outer Email Center Wrapper -->
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #05020c;">
+    <tr>
+      <td align="center" class="outer-container" style="padding: 24px 10px;">
 
-      <!-- Pass Metadata Table -->
-      <table class="info-table">
-        <tr>
-          <td class="info-label">Attendee Name</td>
-          <td class="info-value">${ticket.customerName}</td>
-        </tr>
-        <tr>
-          <td class="info-label">Pass Tier</td>
-          <td class="info-value">${ticket.eventTitle || 'Neon Festival Pass'}</td>
-        </tr>
-        <tr>
-          <td class="info-label">Date & Time</td>
-          <td class="info-value">Saturday, 12 December 2026 (${timingText})</td>
-        </tr>
-        <tr>
-          <td class="info-label">Venue</td>
-          <td class="info-value">F Lounge by FTV, Shillong</td>
-        </tr>
-        <tr>
-          <td class="info-label">Quantity</td>
-          <td class="info-value">${quantity} ${quantity === 1 ? 'Pass' : 'Passes'}</td>
-        </tr>
-        <tr>
-          <td class="info-label">Amount Paid</td>
-          <td class="info-value amount-highlight">₹${formattedAmount} (${ticket.paymentMode || 'Online'})</td>
-        </tr>
-        <tr>
-          <td class="info-label">Payment ID</td>
-          <td class="info-value" style="font-family: monospace; font-size: 12px; color: #bbb3cb;">
-            ${ticket.paymentId || 'N/A'}
-          </td>
-        </tr>
-      </table>
+        <!-- Pre-Header Title -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-bottom: 12px;">
+          <tr>
+            <td align="left" style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: ${theme.accent}; font-weight: 700;">
+              ⚡ Official Festival Entry Pass
+            </td>
+            <td align="right" style="font-size: 11px; font-family: 'Courier New', monospace; color: #8f85a3;">
+              ID: ${ticketId}
+            </td>
+          </tr>
+        </table>
 
-      <!-- Entry Instructions -->
-      <div class="instructions-card">
-        ⚡ <strong>Entry Instructions:</strong> Please present this email or your saved digital E-Pass with the QR code at the entrance for instant handheld scanner check-in. Valid Government Photo ID required.
-      </div>
-    </div>
+        <!-- ======================================================== -->
+        <!-- MAIN TICKET PASS (RESPONSIVE 2-COL / STACK ON MOBILE) -->
+        <!-- ======================================================== -->
+        <table width="100%" class="ticket-wrapper" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #0d071a; border: 2px solid ${theme.border}; border-radius: 22px; box-shadow: 0 10px 40px ${theme.glow}; overflow: hidden;">
+          <tr>
+            <td>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  
+                  <!-- =================================================== -->
+                  <!-- LEFT / MAIN PASS SECTION -->
+                  <!-- =================================================== -->
+                  <td valign="top" class="ticket-col-main" style="padding: 24px 24px;">
+                    
+                    <!-- Top Header: Logo + Title + Pass Badge -->
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 14px;">
+                      <tr>
+                        <td valign="middle">
+                          <table border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                              <td valign="middle" style="padding-right: 10px;">
+                                <img src="https://vibeshillong.com/logo.jpeg" alt="VIBE" width="38" height="38" style="display: block; border-radius: 8px;" />
+                              </td>
+                              <td valign="middle">
+                                <span style="font-size: 14px; font-weight: 800; letter-spacing: 2px; color: #ffffff; display: block;">
+                                  VIBE SHILLONG
+                                </span>
+                                <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); font-family: 'Courier New', monospace; display: block; margin-top: 2px;">
+                                  Official Festival Pass · 2026
+                                </span>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td align="right" valign="middle">
+                          <span style="display: inline-block; background-color: ${theme.badgeBg}; color: ${theme.badgeText}; font-size: 10px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; padding: 5px 12px; border-radius: 20px;">
+                            ${eventTypeKey.toUpperCase()} PASS
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
 
-    <!-- Footer -->
-    <div class="footer-section">
-      Need assistance? Contact support at support@VIBEshillong.com or WhatsApp +91 82230 87569.<br>
-      © 2026 VIBE Shillong. All rights reserved. F Lounge by FTV.
-    </div>
-  </div>
+                    <!-- Attendee Name -->
+                    <div style="padding-top: 14px; margin-bottom: 12px;">
+                      <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4); font-family: 'Courier New', monospace; display: block; margin-bottom: 2px;">
+                        ATTENDEE NAME
+                      </span>
+                      <span class="attendee-name" style="font-size: 22px; font-weight: 900; letter-spacing: 0.5px; color: #ffffff; text-transform: uppercase; display: block; line-height: 1.2;">
+                        ${customerName}
+                      </span>
+                    </div>
+
+                    <!-- 2-Column Specs (Date & Timing Box) -->
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; margin-bottom: 14px; text-align: center;">
+                      <tr>
+                        <td width="50%" style="padding: 10px 8px; border-right: 1px solid rgba(255, 255, 255, 0.1);">
+                          <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); display: block; font-family: 'Courier New', monospace;">DATE</span>
+                          <span style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">12 DEC 2026</span>
+                        </td>
+                        <td width="50%" style="padding: 10px 8px;">
+                          <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); display: block; font-family: 'Courier New', monospace;">TIMING</span>
+                          <span style="font-size: 12px; font-weight: 800; color: ${theme.accent}; display: block; margin-top: 2px;">${timingText}</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Venue & Pass Metadata -->
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px; font-size: 11px; line-height: 1.6; color: rgba(255, 255, 255, 0.8);">
+                      <tr>
+                        <td style="padding-bottom: 3px;">
+                          📍 <strong>F Lounge by FTV, Shillong</strong>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="color: rgba(255, 255, 255, 0.55); font-size: 10px;">
+                          🎟️ Qty: ${quantity} Pass • ₹${amountPaid} Paid • Admit One • Non-Transferable
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Status Strip & Barcode -->
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 10px;">
+                      <tr>
+                        <td align="left">
+                          <span style="display: inline-block; background-color: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 6px;">
+                            ✓ Status: VALID
+                          </span>
+                        </td>
+                        <td align="right" style="font-family: 'Courier New', monospace; font-size: 11px; color: rgba(255,255,255,0.25); letter-spacing: 3px;">
+                          |||||||||||||||||||
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+
+                  <!-- =================================================== -->
+                  <!-- RIGHT / DIGITAL STUB SECTION (RESPONSIVE STACK) -->
+                  <!-- =================================================== -->
+                  <td width="190" valign="top" class="ticket-col-stub" style="border-left: 2px dashed rgba(255, 255, 255, 0.18); background-color: rgba(0, 0, 0, 0.45); padding: 22px 16px; text-align: center;">
+                    
+                    <span style="font-size: 9px; font-family: 'Courier New', monospace; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); text-transform: uppercase; display: block; margin-bottom: 10px; font-weight: 700;">
+                      DIGITAL ENTRY STUB
+                    </span>
+
+                    <!-- White QR Code Box -->
+                    <div style="background-color: #ffffff; padding: 10px; border-radius: 14px; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
+                      <img src="${qrImageUrl}" alt="Scan QR for Entry" width="130" height="130" style="display: block; margin: 0 auto; border-radius: 4px;" />
+                      <span style="display: block; font-size: 8px; font-family: 'Courier New', monospace; font-weight: 900; color: #080414; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px;">
+                        SCAN FOR ENTRY
+                      </span>
+                    </div>
+
+                    <!-- Official Ticket Code -->
+                    <div style="margin-top: 12px;">
+                      <span style="font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); display: block; font-family: 'Courier New', monospace;">
+                        OFFICIAL CODE
+                      </span>
+                      <span style="font-family: 'Courier New', monospace; font-size: 12px; font-weight: 800; color: ${theme.accent}; letter-spacing: 1px; display: block; margin-top: 3px;">
+                        ${ticketId}
+                      </span>
+                      <span style="font-size: 8px; font-family: 'Courier New', monospace; color: rgba(255,255,255,0.35); display: block; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px;">
+                        1-TIME FAST SCAN
+                      </span>
+                    </div>
+
+                  </td>
+
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- ======================================================== -->
+        <!-- 1-CLICK DOWNLOAD / SAVE TICKET PASS BUTTON -->
+        <!-- ======================================================== -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 18px; text-align: center;">
+          <tr>
+            <td align="center">
+              <a href="${downloadUrl}" target="_blank" class="download-btn" style="display: inline-block; background-color: ${theme.badgeBg}; color: ${theme.badgeText}; text-decoration: none; font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; padding: 13px 32px; border-radius: 12px; box-shadow: 0 4px 20px ${theme.glow};">
+                ⬇️ DOWNLOAD / SAVE TICKET (PNG)
+              </a>
+              <div style="margin-top: 8px; font-size: 11px; color: #8f85a3;">
+                Opens your high-res digital ticket with 1-click PNG download & print
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- ======================================================== -->
+        <!-- ENTRY INSTRUCTIONS & VENUE GUIDELINES -->
+        <!-- ======================================================== -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 16px; background-color: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 14px 18px; font-size: 11px; line-height: 1.6; color: #a59cb8;">
+          <tr>
+            <td>
+              ⚡ <strong>Entry Instructions:</strong> Show this email or the scannable QR stub above at the F Lounge by FTV entrance for instant handheld scanner check-in. Physical Government Photo ID (Aadhaar/Driving License/Passport) is mandatory.
+              <br><br>
+              🎨 <strong>Dress Code:</strong> Wear white or neon fluorescent outfits to glow under ultraviolet blacklights. Free UV neon face-styling booths inside the venue!
+            </td>
+          </tr>
+        </table>
+
+        <!-- Footer -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 14px; text-align: center; font-size: 10px; color: #625977; line-height: 1.6;">
+          <tr>
+            <td>
+              Need assistance? WhatsApp <strong>+91 82230 87569</strong> or email support@vibeshillong.com
+              <br>
+              © 2026 VIBE Shillong. All rights reserved. F Lounge by FTV, Shillong.
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
 </body>
 </html>
   `.trim()

@@ -122,11 +122,12 @@ export default function AdminPanel() {
     }
   }
 
+  // Fetch fresh real data on login AND every time active tab changes (e.g. going to Attendees / Booked Tickets)
   useEffect(() => {
     if (isAuthenticated) {
       fetchTickets()
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, activeNav])
 
   // Calculated Stats
   const totalSold = ticketsList.length
@@ -277,7 +278,11 @@ export default function AdminPanel() {
           )}
 
           {activeNav === 'attendees' && (
-            <AttendeesPage ticketsList={ticketsList} />
+            <AttendeesPage
+              ticketsList={ticketsList}
+              onRefreshTickets={fetchTickets}
+              loading={statsLoading}
+            />
           )}
 
           {activeNav === 'packages' && (

@@ -19,11 +19,45 @@ import BookingDrawer from './components/BookingDrawer'
 import AdminPanel from './pages/AdminPanel'
 import KidsEventDetailPage from './pages/KidsEventDetailPage'
 import AdultEventDetailPage from './pages/AdultEventDetailPage'
+import { API_BASE_URL } from './config/api'
+import { DEFAULT_PACKAGES } from './constants/packages'
 
 export default function App() {
   const [activeTicket, setActiveTicket] = useState(null)
+  const [autoDownloadTicket, setAutoDownloadTicket] = useState(false)
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [selectedPackageKey, setSelectedPackageKey] = useState('adult')
+  const [packages, setPackages] = useState(DEFAULT_PACKAGES)
+
+  // Fetch real-time dynamic packages & prices from MongoDB
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/packages`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.packages) && data.packages.length > 0) {
+          setPackages(data.packages)
+        }
+      })
+      .catch(() => {})
+
+    // Check if user came from Email with ?ticket= or ?ticketId=
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      const ticketParam = urlParams.get('ticket') || urlParams.get('ticketId')
+      const downloadParam = urlParams.get('download') === 'true'
+      if (ticketParam) {
+        setAutoDownloadTicket(downloadParam)
+        fetch(`${API_BASE_URL}/api/tickets/${ticketParam.trim().toUpperCase()}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && data.ticket) {
+              setActiveTicket(data.ticket)
+            }
+          })
+          .catch((err) => console.error('Ticket load error from email link:', err))
+      }
+    } catch {}
+  }, [])
 
   const handleOpenBooking = (packageKey = 'adult') => {
     setSelectedPackageKey(packageKey)
@@ -83,6 +117,7 @@ export default function App() {
     return (
       <>
         <KidsEventDetailPage
+          packages={packages}
           onOpenBooking={handleOpenBooking}
           onNavigateHome={() => navigateTo('home')}
         />
@@ -95,7 +130,11 @@ export default function App() {
         <TicketModal
           isOpen={Boolean(activeTicket)}
           ticket={activeTicket}
-          onClose={() => setActiveTicket(null)}
+          autoDownload={autoDownloadTicket}
+          onClose={() => {
+            setActiveTicket(null)
+            setAutoDownloadTicket(false)
+          }}
         />
       </>
     )
@@ -106,6 +145,7 @@ export default function App() {
     return (
       <>
         <AdultEventDetailPage
+          packages={packages}
           onOpenBooking={handleOpenBooking}
           onNavigateHome={() => navigateTo('home')}
         />
@@ -118,7 +158,11 @@ export default function App() {
         <TicketModal
           isOpen={Boolean(activeTicket)}
           ticket={activeTicket}
-          onClose={() => setActiveTicket(null)}
+          autoDownload={autoDownloadTicket}
+          onClose={() => {
+            setActiveTicket(null)
+            setAutoDownloadTicket(false)
+          }}
         />
       </>
     )
@@ -137,13 +181,25 @@ export default function App() {
       <main id="top" className="relative z-10">
         <Hero onOpenBooking={handleOpenBooking} />
         <Marquee />
-        <Concept />
-        <KidsSection onNavigateToDetail={() => navigateTo('kids-event')} />
+        <Concept
+          onNavigateToKids={() => navigateTo('kids-event')}
+          onNavigateToAdult={() => navigateTo('adult-event')}
+        />
+        <KidsSection
+          packages={packages}
+          onNavigateToDetail={() => navigateTo('kids-event')}
+        />
         <GalleryStrip onOpenBooking={handleOpenBooking} />
-        <AdultSection onNavigateToDetail={() => navigateTo('adult-event')} />
+        <AdultSection
+          packages={packages}
+          onNavigateToDetail={() => navigateTo('adult-event')}
+        />
         <VideoShowcase />
         <VenueBanner />
-        <TicketsSection onOpenBooking={handleOpenBooking} />
+        <TicketsSection
+          packages={packages}
+          onOpenBooking={handleOpenBooking}
+        />
         <CountdownSection />
         <ContactSection />
         <FAQSection />
@@ -151,9 +207,6 @@ export default function App() {
 
       {/* Public Footer (Clean, no scanner buttons) */}
       <Footer />
-
-      {/* High-Converting Mobile Sticky Bar (Hidden on desktop, active on mobile) */}
-      <MobileStickyCTA onOpenBooking={handleOpenBooking} />
 
       {/* Slide-over Fast Booking Drawer */}
       <BookingDrawer
@@ -167,7 +220,11 @@ export default function App() {
       <TicketModal
         isOpen={Boolean(activeTicket)}
         ticket={activeTicket}
-        onClose={() => setActiveTicket(null)}
+        autoDownload={autoDownloadTicket}
+        onClose={() => {
+          setActiveTicket(null)
+          setAutoDownloadTicket(false)
+        }}
       />
     </div>
   )

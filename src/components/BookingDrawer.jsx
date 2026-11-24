@@ -75,7 +75,14 @@ export default function BookingDrawer({
       const orderRes = await fetch(`${API_BASE_URL}/api/tickets/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: totalAmount, eventType: formData.event }),
+        body: JSON.stringify({
+          amount: totalAmount,
+          eventType: formData.event,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          quantity: quantity,
+        }),
       })
       const orderData = await orderRes.json()
 

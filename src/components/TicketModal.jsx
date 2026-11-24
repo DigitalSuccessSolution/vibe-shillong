@@ -1,10 +1,19 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { CalendarDays, Download, MapPin, X, ShieldCheck, Clock, Ticket as TicketIcon, Loader2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 
-export default function TicketModal({ isOpen, onClose, ticket }) {
+export default function TicketModal({ isOpen, onClose, ticket, autoDownload = false }) {
   const ticketRef = useRef(null)
   const [downloading, setDownloading] = useState(false)
+
+  useEffect(() => {
+    if (isOpen && autoDownload && ticket) {
+      const timer = setTimeout(() => {
+        handleDownload()
+      }, 700)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen, autoDownload, ticket])
 
   if (!isOpen || !ticket) return null
 

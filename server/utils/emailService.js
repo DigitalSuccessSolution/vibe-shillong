@@ -28,12 +28,26 @@ export async function sendTicketEmail(ticket) {
 
     const htmlContent = generateTicketEmailHtml(ticket)
 
-    const info = await transporter.sendMail({
+    const mailOptions = {
       from: `"VIBE Shillong" <${EMAIL_USER}>`,
       to: ticket.customerEmail,
       subject: `🎟️ Your VIBE Shillong Festival Pass (${ticket.ticketId})`,
       html: htmlContent,
-    })
+      attachments: [
+        {
+          filename: `VIBE-Ticket-${ticket.ticketId || 'Pass'}.html`,
+          content: htmlContent,
+          contentType: 'text/html',
+        },
+      ],
+    }
+
+    // Admin copy: Admin also receives a copy of every attendee's ticket
+    if (EMAIL_USER && ticket.customerEmail.trim().toLowerCase() !== EMAIL_USER.trim().toLowerCase()) {
+      mailOptions.bcc = EMAIL_USER.trim()
+    }
+
+    const info = await transporter.sendMail(mailOptions)
 
     console.log(`[Email Service]: Ticket sent to ${ticket.customerEmail} (ID: ${info.messageId})`)
     return { success: true, messageId: info.messageId }

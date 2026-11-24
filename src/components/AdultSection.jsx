@@ -10,7 +10,9 @@ const tinaGallery = [
   { src: '/images/tina/8F45F607-7A6B-4481-B99A-8CA026FA00BF.png', label: 'Club Edition' },
 ]
 
-export default function AdultSection({ onNavigateToDetail }) {
+export default function AdultSection({ packages = [], onNavigateToDetail }) {
+  const adultPkg = (packages || []).find((p) => p.key === 'adult')
+  const adultPrice = adultPkg ? adultPkg.price : 1499
   const [activePhotoIdx, setActivePhotoIdx] = useState(0)
 
   // Automatic slideshow transition every 3.5 seconds
@@ -193,29 +195,55 @@ export default function AdultSection({ onNavigateToDetail }) {
         ))}
       </div>
 
-      {/* Action Row */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-[#140b22] border border-neon-pink/30 shadow-[0_0_25px_rgba(255,53,196,0.12)]">
-        <div>
-          <h4 className="font-bold font-space text-lg sm:text-xl text-white">Adult Neon Nights Entry Pass</h4>
-          <span className="text-xs text-neon-muted mt-0.5 block">
-            Includes 1 complimentary <strong>Neon Paradise Welcome Drink</strong> & glow accessories
-          </span>
+      {/* Sleek Ticket Pass Style Card */}
+      <div className="relative rounded-2xl bg-gradient-to-r from-[#170a24] via-[#10071a] to-[#0a0510] border border-neon-pink/40 p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        {/* Left: Pass Info & Price Badge */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+          {/* Price Badge Block */}
+          <div className="sm:border-r sm:border-white/10 sm:pr-6 shrink-0">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-neon-pink font-semibold block">
+              Pass Price
+            </span>
+            <div className="font-extrabold font-space text-3xl sm:text-4xl text-white mt-0.5">
+              ₹{adultPrice.toLocaleString('en-IN')}
+            </div>
+            <span className="text-[11px] text-white/40 font-mono mt-0.5 block">
+              Single Adult Pass
+            </span>
+          </div>
+
+          {/* Details */}
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-neon-pink/15 text-neon-pink text-[10px] font-mono font-bold tracking-wider uppercase mb-1">
+              Strictly 18+ • Night Pass
+            </div>
+            <h4 className="font-bold font-space text-xl sm:text-2xl text-white">
+              Adult Neon Nights Entry Pass
+            </h4>
+            <p className="text-xs text-white/60 max-w-lg leading-relaxed">
+              Includes main stage entry, live headliner set by DJ Tina, 1 complimentary Neon Paradise Welcome Drink & glow accessories.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-          <div className="font-bold font-space text-2xl text-white">₹1,499</div>
+
+        {/* Right: Clean Action Buttons with Proper Spacing */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-white/10">
           {onNavigateToDetail && (
             <button
               onClick={onNavigateToDetail}
-              className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold tracking-wide bg-white/10 hover:bg-white/15 text-white border border-white/20 transition-all rounded cursor-pointer"
+              className="px-5 py-3 rounded-xl border border-neon-pink/40 text-neon-pink hover:bg-neon-pink/10 text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2"
             >
-              EVENT DETAILS <ArrowRight size={15} />
+              <span>Explore Details</span>
+              <ArrowRight size={14} />
             </button>
           )}
+
           <a
             href="#tickets"
-            className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 text-xs sm:text-sm font-bold tracking-wide bg-neon-pink text-[#080612] hover:bg-neon-pink/90 transition-all rounded shadow-[0_0_20px_rgba(255,53,196,0.3)]"
+            className="px-6 py-3 rounded-xl bg-neon-pink text-[#080612] hover:opacity-90 text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2 font-space tracking-wide shadow-[0_0_20px_rgba(255,53,196,0.3)]"
           >
-            BOOK ADULT PASS <ArrowRight size={16} />
+            <span>Book Passes</span>
+            <ArrowRight size={14} />
           </a>
         </div>
       </div>

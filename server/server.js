@@ -8,6 +8,7 @@ import { connectDB } from './config/db.js'
 import ticketRoutes from './routes/ticketRoutes.js'
 import packageRoutes from './routes/packageRoutes.js'
 import contactRoutes from './routes/contactRoutes.js'
+import transactionRoutes from './routes/transactionRoutes.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -38,6 +39,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/tickets', ticketRoutes)
 app.use('/api/packages', packageRoutes)
 app.use('/api/contact', contactRoutes)
+app.use('/api/transactions', transactionRoutes)
 
 // Start Server
 app.listen(PORT, () => {

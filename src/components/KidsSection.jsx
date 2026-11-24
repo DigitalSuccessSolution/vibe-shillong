@@ -1,7 +1,9 @@
 import { ArrowRight, Clock3, Gamepad2, Gift, Palette, Sparkles, Zap } from 'lucide-react'
 import { kidsActivities } from '../data/eventData'
 
-export default function KidsSection({ onNavigateToDetail }) {
+export default function KidsSection({ packages = [], onNavigateToDetail }) {
+  const kidsPkg = (packages || []).find((p) => p.key === 'kids')
+  const kidsPrice = kidsPkg ? kidsPkg.price : 1000
   const getIcon = (type) => {
     switch (type) {
       case 'palette': return <Palette size={18} className="text-neon-cyan shrink-0" />
@@ -62,31 +64,55 @@ export default function KidsSection({ onNavigateToDetail }) {
         ))}
       </div>
 
-      {/* Family Pass Highlight Action Row */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 sm:p-7 rounded-2xl bg-[#0c1825] border border-neon-cyan/35 shadow-[0_0_25px_rgba(53,234,255,0.12)]">
-        <div>
-          <h4 className="font-bold font-space text-xl text-white">The Family Pass (1 Child + 1 Parent)</h4>
-          <span className="text-xs text-neon-muted mt-1 block">
-            Includes full festival access, UV face painting, craft materials, dance entertainment & awards entry
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-          <div className="font-bold font-space text-2xl text-white">
-            ₹1,000<span className="text-neon-cyan font-normal">–</span>₹1,200
+      {/* Sleek Ticket Pass Style Card */}
+      <div className="relative rounded-2xl bg-gradient-to-r from-[#0c1825] via-[#09121c] to-[#070d14] border border-neon-cyan/40 p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        {/* Left: Pass Info & Price Badge */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+          {/* Price Badge Block */}
+          <div className="sm:border-r sm:border-white/10 sm:pr-6 shrink-0">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-neon-cyan font-semibold block">
+              Pass Price
+            </span>
+            <div className="font-extrabold font-space text-3xl sm:text-4xl text-white mt-0.5">
+              ₹{kidsPrice.toLocaleString('en-IN')}
+            </div>
+            <span className="text-[11px] text-white/40 font-mono mt-0.5 block">
+              Admit 1+1 Family
+            </span>
           </div>
+
+          {/* Details */}
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-neon-cyan/15 text-neon-cyan text-[10px] font-mono font-bold tracking-wider uppercase mb-1">
+              Carnival Day Pass
+            </div>
+            <h4 className="font-bold font-space text-xl sm:text-2xl text-white">
+              The Family Pass (1 Child + 1 Parent)
+            </h4>
+            <p className="text-xs text-white/60 max-w-lg leading-relaxed">
+              Includes full festival access, UV face painting, soft play arena, DIY craft workshops & glow dance party.
+            </p>
+          </div>
+        </div>
+
+        {/* Right: Clean Action Buttons with Proper Spacing */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-white/10">
           {onNavigateToDetail && (
             <button
               onClick={onNavigateToDetail}
-              className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold tracking-wide bg-white/10 hover:bg-white/15 text-white border border-white/20 transition-all rounded cursor-pointer"
+              className="px-5 py-3 rounded-xl border border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan/10 text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2"
             >
-              EVENT DETAILS <ArrowRight size={15} />
+              <span>Explore Details</span>
+              <ArrowRight size={14} />
             </button>
           )}
+
           <a
             href="#tickets"
-            className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 text-xs sm:text-sm font-bold tracking-wide bg-neon-cyan text-[#071016] hover:opacity-90 transition-all rounded shadow-[0_0_20px_rgba(53,234,255,0.25)]"
+            className="px-6 py-3 rounded-xl bg-neon-cyan text-[#071016] hover:opacity-90 text-xs font-bold transition-all cursor-pointer inline-flex items-center justify-center gap-2 font-space tracking-wide shadow-[0_0_20px_rgba(53,234,255,0.25)]"
           >
-            BOOK PASSES <ArrowRight size={16} />
+            <span>Book Passes</span>
+            <ArrowRight size={14} />
           </a>
         </div>
       </div>

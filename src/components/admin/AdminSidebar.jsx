@@ -1,4 +1,4 @@
-import { QrCode, Users, TrendingUp, Tag, CreditCard, LogOut, ExternalLink, X, MessageSquare } from 'lucide-react'
+import { QrCode, Ticket, TrendingUp, Tag, CreditCard, LogOut, ExternalLink, X, MessageSquare } from 'lucide-react'
 import { ADMIN_USER } from '../../config/api'
 
 export default function AdminSidebar({
@@ -11,8 +11,8 @@ export default function AdminSidebar({
 }) {
   const navItems = [
     { id: 'scanner', label: 'Gate Scanner', icon: QrCode, badge: 'Live', path: '/admin/scanner' },
+    { id: 'attendees', label: 'Booked Tickets', icon: Ticket, count: totalSold, path: '/admin/attendees' },
     { id: 'transactions', label: 'Transactions', icon: CreditCard, count: totalSold, path: '/admin/transactions' },
-    { id: 'attendees', label: 'Attendee Ledger', icon: Users, path: '/admin/attendees' },
     { id: 'packages', label: 'Ticket Packages', icon: Tag, path: '/admin/packages' },
     { id: 'inquiries', label: 'Inquiries & Leads', icon: MessageSquare, path: '/admin/inquiries' },
     { id: 'analytics', label: 'Analytics & Stats', icon: TrendingUp, path: '/admin/analytics' },

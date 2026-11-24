@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Search, Download, CheckCircle2, Copy, Check, RefreshCw, Plus } from 'lucide-react'
+import { Search, Download, CheckCircle2, Copy, Check, RefreshCw, Plus, XCircle, AlertTriangle } from 'lucide-react'
 import { API_BASE_URL } from '../../config/api'
 
 export default function TransactionsPage({ ticketsList: propTickets = [] }) {
-  const [ticketsList, setTicketsList] = useState(propTickets)
+  const [transactionsList, setTransactionsList] = useState([])
+  const [metrics, setMetrics] = useState({
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalRefunded: 0,
+    failedCount: 0,
+  })
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'SUCCESS' | 'FAILED' | 'REFUNDED'
   const [passFilter, setPassFilter] = useState('all')
   const [selectedTx, setSelectedTx] = useState(null)
   const [copiedId, setCopiedId] = useState('')
@@ -14,6 +21,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
   // Modal: Add / Record Counter Payment
   const [isAddingOffline, setIsAddingOffline] = useState(false)
   const [isSubmittingOffline, setIsSubmittingOffline] = useState(false)
+  const [isRefunding, setIsRefunding] = useState(false)
   const [offlineForm, setOfflineForm] = useState({
     customerName: '',
     customerPhone: '',
@@ -23,17 +31,38 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
     paymentMode: 'Cash at Counter',
   })
 
-  // Fetch real-time tickets from MongoDB
-  const fetchLiveTickets = async () => {
+  // Fetch real-time transactions from MongoDB Transaction Collection
+  const fetchLiveTransactions = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE_URL}/api/tickets`)
+      const res = await fetch(`${API_BASE_URL}/api/transactions`)
       const data = await res.json()
-      if (data.success && Array.isArray(data.tickets)) {
-        setTicketsList(data.tickets)
+      if (data.success && Array.isArray(data.transactions)) {
+        setTransactionsList(data.transactions)
+        if (data.metrics) setMetrics(data.metrics)
+      } else {
+        // Fallback to /api/tickets if /api/transactions is warming up
+        const ticketRes = await fetch(`${API_BASE_URL}/api/tickets`)
+        const ticketData = await ticketRes.json()
+        if (ticketData.success && Array.isArray(ticketData.tickets)) {
+          const mapped = ticketData.tickets.map((t) => ({
+            transactionId: t.paymentId || `PAY_${t.ticketId}`,
+            orderId: t.orderId || '',
+            ticketId: t.ticketId,
+            customerName: t.customerName,
+            customerPhone: t.customerPhone,
+            customerEmail: t.customerEmail,
+            eventType: t.eventType,
+            amount: t.amountPaid,
+            paymentMode: t.paymentMode || 'Online UPI',
+            status: t.status === 'CANCELLED' ? 'REFUNDED' : 'SUCCESS',
+            createdAt: t.createdAt,
+          }))
+          setTransactionsList(mapped)
+        }
       }
     } catch (err) {
-      console.error('Error fetching live tickets:', err)
+      console.error('Error fetching live transactions:', err)
     } finally {
       setLoading(false)
     }
@@ -56,36 +85,25 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
   }
 
   useEffect(() => {
-    fetchLiveTickets()
+    fetchLiveTransactions()
     fetchDynamicPackages()
   }, [])
 
-  // Sync prop changes
-  useEffect(() => {
-    if (propTickets.length > 0 && ticketsList.length === 0) {
-      setTicketsList(propTickets)
-    }
-  }, [propTickets])
-
-  // Live Metrics
-  const totalRevenue = ticketsList.reduce((acc, curr) => acc + (Number(curr.amountPaid) || 0), 0)
-  const totalOrders = ticketsList.length
-  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0
-
   // Filtered transactions
-  const filteredTransactions = ticketsList.filter((t) => {
+  const filteredTransactions = transactionsList.filter((t) => {
     const matchesPass = passFilter === 'all' ? true : t.eventType === passFilter
+    const matchesStatus = statusFilter === 'all' ? true : t.status === statusFilter
     const q = searchQuery.toLowerCase().trim()
     const matchesSearch =
       !q ||
-      (t.paymentId || '').toLowerCase().includes(q) ||
+      (t.transactionId || '').toLowerCase().includes(q) ||
       (t.orderId || '').toLowerCase().includes(q) ||
       (t.ticketId || '').toLowerCase().includes(q) ||
       (t.customerName || '').toLowerCase().includes(q) ||
       (t.customerPhone || '').includes(q) ||
       (t.customerEmail || '').toLowerCase().includes(q)
 
-    return matchesPass && matchesSearch
+    return matchesPass && matchesStatus && matchesSearch
   })
 
   // Format Date and Time
@@ -145,8 +163,8 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
       })
 
       const data = await res.json()
-      if (data.success && data.ticket) {
-        setTicketsList((prev) => [data.ticket, ...prev])
+      if (data.success) {
+        fetchLiveTransactions()
         setIsAddingOffline(false)
         setOfflineForm({
           customerName: '',
@@ -166,9 +184,34 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
     }
   }
 
+  // Handle Refund & Ticket Invalidation
+  const handleRefundTransaction = async (txId) => {
+    if (!window.confirm('Are you sure you want to refund this transaction? The attendee ticket will be immediately cancelled at the gate.')) return
+    setIsRefunding(true)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/transactions/${txId}/refund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refundReason: 'Initiated from Admin Panel' }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        alert(data.message)
+        await fetchLiveTransactions()
+        setSelectedTx(null)
+      } else {
+        alert(data.message || 'Refund processing failed.')
+      }
+    } catch (err) {
+      alert('Refund error: ' + err.message)
+    } finally {
+      setIsRefunding(false)
+    }
+  }
+
   // Export CSV
   const handleExportCSV = () => {
-    if (ticketsList.length === 0) {
+    if (transactionsList.length === 0) {
       alert('No transactions to export.')
       return
     }
@@ -176,8 +219,8 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
     const headers = [
       'Transaction Date',
       'Time',
-      'Payment ID',
-      'Order ID',
+      'Transaction ID',
+      'Razorpay Order ID',
       'Ticket ID',
       'Customer Name',
       'Phone',
@@ -187,24 +230,26 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
       'Amount (INR)',
       'Payment Mode',
       'Status',
+      'Failure / Refund Note',
     ]
 
-    const rows = ticketsList.map((t) => {
+    const rows = transactionsList.map((t) => {
       const dt = formatDateTime(t.createdAt)
       return [
         dt.date,
         dt.time,
-        t.paymentId || 'PAY_DIRECT',
-        t.orderId || 'ORDER_DIRECT',
+        t.transactionId || '',
+        t.orderId || '',
         t.ticketId || '',
         `"${(t.customerName || '').replace(/"/g, '""')}"`,
         t.customerPhone || '',
         t.customerEmail || '',
         t.eventType || '',
         t.quantity || 1,
-        t.amountPaid || 0,
+        t.amount || 0,
         t.paymentMode || 'Online UPI',
-        'PAID',
+        t.status || 'SUCCESS',
+        `"${(t.failureReason || (t.refundAmount ? `Refund: ₹${t.refundAmount}` : '') || '').replace(/"/g, '""')}"`,
       ]
     })
 
@@ -223,36 +268,50 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
 
   return (
     <div className="space-y-6 w-full">
-      {/* 3 Live Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* 4 Live Metric Cards from MongoDB Transaction Model */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Revenue */}
         <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5 shadow-lg">
           <span className="text-[10px] text-white/50 uppercase tracking-wider font-bold block mb-1">
             Total Revenue Collected
           </span>
           <div className="font-space font-bold text-2xl sm:text-3xl text-emerald-400">
-            ₹{totalRevenue.toLocaleString('en-IN')}
+            ₹{metrics.totalRevenue.toLocaleString('en-IN')}
           </div>
-          <span className="text-[11px] text-white/40 mt-1 block">Live database settlement total</span>
+          <span className="text-[11px] text-white/40 mt-1 block">Live settled payments in database</span>
         </div>
 
+        {/* Paid Orders */}
         <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5 shadow-lg">
           <span className="text-[10px] text-white/50 uppercase tracking-wider font-bold block mb-1">
-            Total Paid Orders
+            Paid Successful Orders
           </span>
           <div className="font-space font-bold text-2xl sm:text-3xl text-white">
-            {totalOrders}
+            {metrics.totalOrders}
           </div>
-          <span className="text-[11px] text-white/40 mt-1 block">Verified booking entries in MongoDB</span>
+          <span className="text-[11px] text-white/40 mt-1 block">Verified booking transactions</span>
         </div>
 
+        {/* Refunded */}
         <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5 shadow-lg">
-          <span className="text-[10px] text-white/50 uppercase tracking-wider font-bold block mb-1">
-            Average Order Value
+          <span className="text-[10px] text-amber-400/80 uppercase tracking-wider font-bold block mb-1">
+            Total Refunded
           </span>
-          <div className="font-space font-bold text-2xl sm:text-3xl text-neon-cyan">
-            ₹{avgOrderValue.toLocaleString('en-IN')}
+          <div className="font-space font-bold text-2xl sm:text-3xl text-amber-300">
+            ₹{metrics.totalRefunded.toLocaleString('en-IN')}
           </div>
-          <span className="text-[11px] text-white/40 mt-1 block">Revenue per transaction</span>
+          <span className="text-[11px] text-white/40 mt-1 block">Reversed / Cancelled passes</span>
+        </div>
+
+        {/* Failed Attempts */}
+        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5 shadow-lg">
+          <span className="text-[10px] text-red-400/80 uppercase tracking-wider font-bold block mb-1">
+            Failed Gateway Attempts
+          </span>
+          <div className="font-space font-bold text-2xl sm:text-3xl text-red-400">
+            {metrics.failedCount}
+          </div>
+          <span className="text-[11px] text-white/40 mt-1 block">Declined / Bank errors</span>
         </div>
       </div>
 
@@ -263,7 +322,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
           <div>
             <h3 className="font-bold font-space text-xl text-white">Payment Transactions & Orders</h3>
             <p className="text-xs text-white/50 mt-0.5">
-              Live MongoDB & Razorpay transaction ledger ({ticketsList.length} total records)
+              Dedicated MongoDB Transaction Model • {transactionsList.length} total transaction records
             </p>
           </div>
 
@@ -273,44 +332,57 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
               <input
                 type="text"
-                placeholder="Search Payment ID, Order ID, Name, Phone..."
+                placeholder="Search Transaction ID, Order, Name, Phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-4 py-2 bg-black/50 border border-white/15 rounded-xl text-xs text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan w-56 sm:w-64"
               />
             </div>
 
-            {/* Dynamic Pass Filters */}
+            {/* Status Filter */}
             <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10 text-xs">
               <button
                 type="button"
-                onClick={() => setPassFilter('all')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${passFilter === 'all'
-                    ? 'bg-neon-cyan text-[#071016]'
-                    : 'text-white/60 hover:text-white'
-                  }`}
+                onClick={() => setStatusFilter('all')}
+                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  statusFilter === 'all' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'
+                }`}
               >
-                All ({totalOrders})
+                All Status
               </button>
-              {packages.map((pkg) => (
-                <button
-                  key={pkg.key}
-                  type="button"
-                  onClick={() => setPassFilter(pkg.key)}
-                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer capitalize ${passFilter === pkg.key
-                      ? 'bg-neon-cyan text-[#071016]'
-                      : 'text-white/60 hover:text-white'
-                    }`}
-                >
-                  {pkg.title.split(' ')[0]}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setStatusFilter('SUCCESS')}
+                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  statusFilter === 'SUCCESS' ? 'bg-emerald-500/30 text-emerald-300' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                Paid
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('REFUNDED')}
+                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  statusFilter === 'REFUNDED' ? 'bg-amber-500/30 text-amber-300' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                Refunded
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('FAILED')}
+                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  statusFilter === 'FAILED' ? 'bg-red-500/30 text-red-300' : 'text-white/60 hover:text-white'
+                }`}
+              >
+                Failed
+              </button>
             </div>
 
             {/* Refresh Live Data */}
             <button
               type="button"
-              onClick={fetchLiveTickets}
+              onClick={fetchLiveTransactions}
               disabled={loading}
               className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-white/80 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/10"
               title="Refresh live data from database"
@@ -324,7 +396,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
               onClick={() => setIsAddingOffline(true)}
               className="px-3.5 py-2 rounded-xl bg-neon-pink text-[#080612] font-bold text-xs uppercase tracking-wider hover:opacity-90 flex items-center gap-1 transition-all cursor-pointer"
             >
-              <Plus size={14} /> Record Payment
+              <Plus size={14} /> Record Counter Sale
             </button>
 
             {/* Export CSV Button */}
@@ -344,12 +416,12 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-white/10 text-white/40 uppercase tracking-wider font-bold">
-                <th className="py-3 px-4">Payment Ref ID</th>
+                <th className="py-3 px-4">Transaction / Ref ID</th>
                 <th className="py-3 px-4">Date & Time</th>
                 <th className="py-3 px-4">Attendee / Customer</th>
                 <th className="py-3 px-4">Pass Tier</th>
                 <th className="py-3 px-4">Amount</th>
-                <th className="py-3 px-4">Gateway Status</th>
+                <th className="py-3 px-4">Payment Status</th>
                 <th className="py-3 px-4 text-right">Details</th>
               </tr>
             </thead>
@@ -357,21 +429,21 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
               {filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-10 text-white/40">
-                    No transactions found in database.
+                    No transactions found matching your criteria.
                   </td>
                 </tr>
               ) : (
                 filteredTransactions.map((tx) => {
                   const dt = formatDateTime(tx.createdAt)
-                  const paymentDisplay = tx.paymentId || 'PAY_DIRECT'
+                  const paymentDisplay = tx.transactionId || tx.paymentId || 'TX_DIRECT'
 
                   return (
                     <tr
-                      key={tx.ticketId}
+                      key={tx._id || tx.transactionId}
                       onClick={() => setSelectedTx(tx)}
                       className="hover:bg-white/5 transition-colors cursor-pointer group"
                     >
-                      {/* Payment ID */}
+                      {/* Transaction ID */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono font-bold text-neon-cyan">
@@ -381,12 +453,12 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleCopy(paymentDisplay, `pay_${tx.ticketId}`)
+                              handleCopy(paymentDisplay, `pay_${paymentDisplay}`)
                             }}
                             className="text-white/30 hover:text-white p-1 transition-colors"
-                            title="Copy payment ID"
+                            title="Copy transaction ID"
                           >
-                            {copiedId === `pay_${tx.ticketId}` ? (
+                            {copiedId === `pay_${paymentDisplay}` ? (
                               <Check size={12} className="text-emerald-400" />
                             ) : (
                               <Copy size={12} />
@@ -422,26 +494,62 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                         <div className="font-medium text-white capitalize">
                           {tx.eventType} Pass
                         </div>
-                        <span className="text-[10px] text-neon-pink font-mono font-bold">
-                          {tx.ticketId}
-                        </span>
+                        {tx.ticketId && (
+                          <span className="text-[10px] text-neon-pink font-mono font-bold">
+                            {tx.ticketId}
+                          </span>
+                        )}
                       </td>
 
                       {/* Amount Paid */}
                       <td className="py-3.5 px-4">
-                        <span className="font-space font-bold text-sm text-emerald-400">
-                          ₹{Number(tx.amountPaid).toLocaleString('en-IN')}
+                        <span
+                          className={`font-space font-bold text-sm ${
+                            tx.status === 'REFUNDED'
+                              ? 'text-amber-400 line-through'
+                              : tx.status === 'FAILED'
+                              ? 'text-red-400'
+                              : 'text-emerald-400'
+                          }`}
+                        >
+                          ₹{Number(tx.amount || 0).toLocaleString('en-IN')}
                         </span>
-                        <div className="text-[10px] text-white/40">
-                          {tx.paymentMode || 'Online UPI'}
+                        <div className="mt-1">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-white/5 border border-white/10 text-white/70">
+                            {tx.paymentMode || 'UPI'}
+                          </span>
                         </div>
                       </td>
 
                       {/* Status */}
                       <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                          <CheckCircle2 size={11} /> PAID
-                        </span>
+                        {tx.status === 'REFUNDED' ? (
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                              <AlertTriangle size={11} /> REFUNDED
+                            </span>
+                            {tx.refundAmount > 0 && (
+                              <div className="text-[10px] text-amber-400/80 font-mono mt-0.5">
+                                ₹{tx.refundAmount} refunded
+                              </div>
+                            )}
+                          </div>
+                        ) : tx.status === 'FAILED' ? (
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/40">
+                              <XCircle size={11} /> FAILED
+                            </span>
+                            {tx.failureReason && (
+                              <div className="text-[10px] text-red-400/80 max-w-[140px] truncate mt-0.5" title={tx.failureReason}>
+                                {tx.failureReason}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                            <CheckCircle2 size={11} /> PAID
+                          </span>
+                        )}
                       </td>
 
                       {/* View Button */}
@@ -479,50 +587,49 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
 
             <form onSubmit={handleRecordOfflinePayment} className="space-y-4 text-xs">
               <div>
-                <label className="text-white/70 font-semibold block mb-1">Customer Name</label>
+                <label className="block text-white/70 mb-1 font-semibold">Attendee Full Name *</label>
                 <input
-                  required
                   type="text"
-                  placeholder="Full name"
+                  required
+                  placeholder="e.g. Rahul Sharma"
                   value={offlineForm.customerName}
                   onChange={(e) => setOfflineForm({ ...offlineForm, customerName: e.target.value })}
-                  className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-neon-pink"
+                  className="w-full px-3.5 py-2.5 bg-black/50 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-neon-pink"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-white/70 font-semibold block mb-1">Phone Number</label>
+                  <label className="block text-white/70 mb-1 font-semibold">Phone Number *</label>
                   <input
-                    required
                     type="tel"
-                    placeholder="+91 98765 43210"
+                    required
+                    placeholder="e.g. 9876543210"
                     value={offlineForm.customerPhone}
                     onChange={(e) => setOfflineForm({ ...offlineForm, customerPhone: e.target.value })}
-                    className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-neon-pink"
+                    className="w-full px-3.5 py-2.5 bg-black/50 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-neon-pink"
                   />
                 </div>
                 <div>
-                  <label className="text-white/70 font-semibold block mb-1">Email (For E-Pass)</label>
+                  <label className="block text-white/70 mb-1 font-semibold">Email Address *</label>
                   <input
-                    required
                     type="email"
-                    placeholder="email@domain.com"
+                    required
+                    placeholder="attendee@gmail.com"
                     value={offlineForm.customerEmail}
                     onChange={(e) => setOfflineForm({ ...offlineForm, customerEmail: e.target.value })}
-                    className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-neon-pink"
+                    className="w-full px-3.5 py-2.5 bg-black/50 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-neon-pink"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-white/70 font-semibold block mb-1">Pass Package</label>
+                  <label className="block text-white/70 mb-1 font-semibold">Select Pass Package *</label>
                   <select
-                    required
                     value={offlineForm.eventType}
                     onChange={(e) => setOfflineForm({ ...offlineForm, eventType: e.target.value })}
-                    className="w-full bg-[#120a22] border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-neon-pink"
+                    className="w-full px-3.5 py-2.5 bg-black/80 border border-white/15 rounded-xl text-white focus:outline-none focus:border-neon-pink"
                   >
                     {packages.map((pkg) => (
                       <option key={pkg.key} value={pkg.key}>
@@ -531,22 +638,34 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                     ))}
                   </select>
                 </div>
-
                 <div>
-                  <label className="text-white/70 font-semibold block mb-1">Payment Method</label>
-                  <select
-                    value={offlineForm.paymentMode}
-                    onChange={(e) => setOfflineForm({ ...offlineForm, paymentMode: e.target.value })}
-                    className="w-full bg-[#120a22] border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-sm focus:outline-none focus:border-neon-pink"
-                  >
-                    <option value="Cash at Counter">Cash at Counter</option>
-                    <option value="Counter UPI / POS">Counter UPI / POS</option>
-                    <option value="Card Swipe Machine">Card Swipe Machine</option>
-                  </select>
+                  <label className="block text-white/70 mb-1 font-semibold">Quantity</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={offlineForm.quantity}
+                    onChange={(e) => setOfflineForm({ ...offlineForm, quantity: Math.max(1, Number(e.target.value)) })}
+                    className="w-full px-3.5 py-2.5 bg-black/50 border border-white/15 rounded-xl text-white focus:outline-none focus:border-neon-pink"
+                  />
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-3 border-t border-white/10">
+              <div>
+                <label className="block text-white/70 mb-1 font-semibold">Payment Received Via</label>
+                <select
+                  value={offlineForm.paymentMode}
+                  onChange={(e) => setOfflineForm({ ...offlineForm, paymentMode: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-black/80 border border-white/15 rounded-xl text-white focus:outline-none focus:border-neon-pink"
+                >
+                  <option value="Cash at Counter">Cash at Counter</option>
+                  <option value="UPI / QR Scanner">UPI / QR at Counter</option>
+                  <option value="Card POS Machine">Card POS Machine</option>
+                  <option value="VIP Complimentary">VIP Complimentary</option>
+                </select>
+              </div>
+
+              <div className="pt-3 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setIsAddingOffline(false)}
@@ -588,30 +707,66 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
             </div>
 
             <div className="space-y-4 text-xs">
-              <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+              <div
+                className={`p-4 rounded-xl border flex items-center justify-between ${
+                  selectedTx.status === 'REFUNDED'
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : selectedTx.status === 'FAILED'
+                    ? 'bg-red-500/10 border-red-500/30'
+                    : 'bg-emerald-500/10 border-emerald-500/30'
+                }`}
+              >
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-emerald-400/80 block">
+                  <span
+                    className={`text-[10px] uppercase font-bold block ${
+                      selectedTx.status === 'REFUNDED'
+                        ? 'text-amber-400/80'
+                        : selectedTx.status === 'FAILED'
+                        ? 'text-red-400/80'
+                        : 'text-emerald-400/80'
+                    }`}
+                  >
                     Amount Paid
                   </span>
-                  <div className="text-2xl font-bold font-space text-emerald-300">
-                    ₹{Number(selectedTx.amountPaid).toLocaleString('en-IN')}
+                  <div
+                    className={`text-2xl font-bold font-space ${
+                      selectedTx.status === 'REFUNDED'
+                        ? 'text-amber-300 line-through'
+                        : selectedTx.status === 'FAILED'
+                        ? 'text-red-300'
+                        : 'text-emerald-300'
+                    }`}
+                  >
+                    ₹{Number(selectedTx.amount || selectedTx.amountPaid || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  Payment Confirmed
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                    selectedTx.status === 'REFUNDED'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : selectedTx.status === 'FAILED'
+                      ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  }`}
+                >
+                  {selectedTx.status === 'REFUNDED'
+                    ? 'Refunded / Cancelled'
+                    : selectedTx.status === 'FAILED'
+                    ? 'Payment Failed'
+                    : 'Payment Confirmed (Paid)'}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/10">
                 <div>
                   <span className="text-[10px] text-white/40 uppercase block mb-0.5">
-                    Payment Reference ID
+                    Transaction ID
                   </span>
                   <div className="flex items-center gap-1.5 font-mono font-bold text-neon-cyan">
-                    <span>{selectedTx.paymentId || 'PAY_DIRECT'}</span>
+                    <span>{selectedTx.transactionId || selectedTx.paymentId || 'TX_DIRECT'}</span>
                     <button
                       type="button"
-                      onClick={() => handleCopy(selectedTx.paymentId, 'modal_pay')}
+                      onClick={() => handleCopy(selectedTx.transactionId || selectedTx.paymentId, 'modal_pay')}
                       className="text-white/30 hover:text-white p-0.5"
                       title="Copy"
                     >
@@ -634,68 +789,85 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                     Ticket ID
                   </span>
                   <span className="font-mono font-bold text-neon-pink">
-                    {selectedTx.ticketId}
+                    {selectedTx.ticketId || '—'}
                   </span>
                 </div>
 
                 <div>
                   <span className="text-[10px] text-white/40 uppercase block mb-0.5">
-                    Payment Mode
+                    Payment Method
                   </span>
                   <span className="text-white font-medium">
-                    {selectedTx.paymentMode || 'Online UPI'}
+                    {selectedTx.paymentMode || 'UPI'}
                   </span>
                 </div>
               </div>
 
+              {selectedTx.failureReason && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-red-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wider block mb-0.5 text-red-400">
+                    Failure Reason:
+                  </span>
+                  {selectedTx.failureReason}
+                </div>
+              )}
+
+              {selectedTx.refundAmount > 0 && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300">
+                  <span className="text-[10px] font-bold uppercase tracking-wider block mb-0.5 text-amber-400">
+                    Refund Amount:
+                  </span>
+                  ₹{selectedTx.refundAmount} was reversed back to customer bank.
+                </div>
+              )}
+
               <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
-                <span className="text-[10px] text-white/40 uppercase font-bold block">
-                  Customer Billing Information
+                <span className="text-[10px] text-white/40 uppercase font-bold tracking-wider block">
+                  Customer & Pass Info
                 </span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-white/40 block text-[10px]">Name</span>
-                    <strong className="text-white">{selectedTx.customerName}</strong>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block text-[10px]">Phone</span>
-                    <span className="text-white/90 font-mono">{selectedTx.customerPhone}</span>
-                  </div>
+                <div className="flex justify-between py-1 border-b border-white/5">
+                  <span className="text-white/60">Attendee Name</span>
+                  <strong className="text-white">{selectedTx.customerName}</strong>
                 </div>
-                {selectedTx.customerEmail && (
-                  <div>
-                    <span className="text-white/40 block text-[10px]">Email (E-Pass Delivery)</span>
-                    <span className="text-white/90 font-mono">{selectedTx.customerEmail}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-white/40 uppercase block">Booked Package</span>
-                  <strong className="text-white capitalize">{selectedTx.eventType} Pass</strong>
-                  <div className="text-[11px] text-white/50">{selectedTx.eventTitle}</div>
+                <div className="flex justify-between py-1 border-b border-white/5">
+                  <span className="text-white/60">Phone Number</span>
+                  <span className="text-white font-mono">{selectedTx.customerPhone}</span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-white/40 uppercase block">Quantity</span>
-                  <span className="text-white font-bold">{selectedTx.quantity || 1} Pass</span>
+                <div className="flex justify-between py-1 border-b border-white/5">
+                  <span className="text-white/60">Email</span>
+                  <span className="text-white font-mono">{selectedTx.customerEmail || '—'}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-white/60">Pass Type & Quantity</span>
+                  <span className="text-neon-cyan font-bold capitalize">
+                    {selectedTx.eventType} Pass ({selectedTx.quantity || 1} {selectedTx.quantity === 1 ? 'ticket' : 'tickets'})
+                  </span>
                 </div>
               </div>
+            </div>
 
-              <div className="text-center text-[11px] text-white/40 font-mono pt-1">
-                Transaction logged: {formatDateTime(selectedTx.createdAt).date} at{' '}
-                {formatDateTime(selectedTx.createdAt).time}
-              </div>
-
-              <div className="pt-2">
+            <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between gap-3">
+              {selectedTx.status === 'SUCCESS' ? (
                 <button
                   type="button"
-                  onClick={() => setSelectedTx(null)}
-                  className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                  disabled={isRefunding}
+                  onClick={() => handleRefundTransaction(selectedTx.transactionId)}
+                  className="px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  Done
+                  <AlertTriangle size={13} />
+                  {isRefunding ? 'Processing Refund...' : 'Refund & Cancel Pass'}
                 </button>
-              </div>
+              ) : (
+                <div />
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSelectedTx(null)}
+                className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Close Receipt
+              </button>
             </div>
           </div>
         </div>

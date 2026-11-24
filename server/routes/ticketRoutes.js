@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import crypto from 'crypto'
 import Razorpay from 'razorpay'
 import Ticket from '../models/Ticket.js'
+import Transaction from '../models/Transaction.js'
 import { sendTicketEmail } from '../utils/emailService.js'
 
 const router = express.Router()
@@ -30,6 +31,38 @@ function generateTicketId(prefix = 'NEON') {
   const randomNum = Math.floor(1000 + Math.random() * 9000)
   const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase()
   return `${prefix}-${randomNum}-${randomChars}`.toUpperCase()
+}
+
+// Helper to resolve human-readable payment method (UPI, Card, Netbanking, Wallet, Cash)
+function formatPaymentMethod(entity = {}) {
+  const method = (entity.method || '').toLowerCase()
+  if (method === 'upi') {
+    return entity.vpa ? `UPI (${entity.vpa})` : 'UPI'
+  }
+  if (method === 'card') {
+    const card = entity.card || {}
+    const net = card.network || ''
+    const type = card.type ? card.type.toUpperCase() : ''
+    const last4 = card.last4 ? `•••• ${card.last4}` : ''
+    const parts = [net, type, last4].filter(Boolean).join(' ')
+    return parts ? `Card (${parts})` : 'Card'
+  }
+  if (method === 'netbanking') {
+    return entity.bank ? `Netbanking (${entity.bank})` : 'Netbanking'
+  }
+  if (method === 'wallet') {
+    return entity.wallet ? `Wallet (${entity.wallet})` : 'Wallet'
+  }
+  if (method === 'emi') {
+    return 'EMI'
+  }
+  if (method === 'paylater') {
+    return 'PayLater'
+  }
+  if (entity.paymentMode && !entity.paymentMode.toLowerCase().includes('razorpay')) {
+    return entity.paymentMode
+  }
+  return 'UPI'
 }
 
 /**
@@ -81,6 +114,23 @@ router.post('/book', async (req, res) => {
 
     const savedTicket = await newTicket.save()
 
+    // Record Transaction in Transaction Collection
+    await Transaction.create({
+      transactionId: paymentId,
+      ticketId: savedTicket.ticketId,
+      ticketRef: savedTicket._id,
+      customerName: savedTicket.customerName,
+      customerPhone: savedTicket.customerPhone,
+      customerEmail: savedTicket.customerEmail,
+      eventType: savedTicket.eventType,
+      quantity: savedTicket.quantity,
+      amount: savedTicket.amountPaid,
+      currency: 'INR',
+      paymentGateway: 'Counter',
+      paymentMode: paymentMode || 'Cash at Counter',
+      status: 'SUCCESS',
+    }).catch((txErr) => console.error('[Transaction log error in /book]:', txErr.message))
+
     // Send confirmation email in background
     sendTicketEmail(savedTicket).catch((err) =>
       console.error('[Email background error]:', err.message)
@@ -106,7 +156,7 @@ router.post('/book', async (req, res) => {
  */
 router.post('/create-order', async (req, res) => {
   try {
-    const { amount, eventType } = req.body
+    const { amount, eventType, customerName, customerEmail, customerPhone, quantity } = req.body
     if (!amount || Number(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'Valid amount is required.' })
     }
@@ -115,7 +165,13 @@ router.post('/create-order', async (req, res) => {
       amount: Math.round(Number(amount) * 100), // paise
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
-      notes: { eventType: eventType || 'general' },
+      notes: {
+        eventType: eventType || 'general',
+        customerName: customerName || '',
+        customerEmail: customerEmail || '',
+        customerPhone: customerPhone || '',
+        quantity: String(quantity || 1),
+      },
     }
 
     const keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_sample'
@@ -243,6 +299,25 @@ router.post('/verify-payment', async (req, res) => {
 
     const ticketId = generateTicketId(eventType.toUpperCase())
 
+    // Fetch live payment details from Razorpay to get the EXACT payment method (UPI, Netbanking, Card)
+    let resolvedPaymentMode = 'UPI'
+    if (!isSandboxPayment && key_secret) {
+      try {
+        const rzp = new Razorpay({
+          key_id: process.env.RAZORPAY_KEY_ID,
+          key_secret: process.env.RAZORPAY_KEY_SECRET,
+        })
+        const paymentDetails = await rzp.payments.fetch(razorpay_payment_id)
+        if (paymentDetails) {
+          resolvedPaymentMode = formatPaymentMethod(paymentDetails)
+        }
+      } catch (fetchErr) {
+        console.warn('[Fetch Razorpay Method]:', fetchErr.message)
+      }
+    } else if (isSandboxPayment) {
+      resolvedPaymentMode = 'UPI'
+    }
+
     const newTicket = new Ticket({
       ticketId,
       customerName: customerName.trim(),
@@ -254,11 +329,47 @@ router.post('/verify-payment', async (req, res) => {
       amountPaid: Number(amountPaid) || 0,
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id,
-      paymentMode: 'Razorpay Online',
+      paymentMode: resolvedPaymentMode,
       status: 'VALID',
     })
 
     const savedTicket = await newTicket.save()
+
+    // Record Transaction in Transaction Collection
+    await Transaction.create({
+      transactionId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      ticketId: savedTicket.ticketId,
+      ticketRef: savedTicket._id,
+      customerName: savedTicket.customerName,
+      customerPhone: savedTicket.customerPhone,
+      customerEmail: savedTicket.customerEmail,
+      eventType: savedTicket.eventType,
+      quantity: savedTicket.quantity,
+      amount: savedTicket.amountPaid,
+      currency: 'INR',
+      paymentGateway: 'Razorpay',
+      paymentMode: resolvedPaymentMode,
+      status: 'SUCCESS',
+    }).catch((txErr) => console.error('[Transaction log error in /verify-payment]:', txErr.message))
+
+    // Record Transaction in Transaction Collection
+    await Transaction.create({
+      transactionId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      ticketId: savedTicket.ticketId,
+      ticketRef: savedTicket._id,
+      customerName: savedTicket.customerName,
+      customerPhone: savedTicket.customerPhone,
+      customerEmail: savedTicket.customerEmail,
+      eventType: savedTicket.eventType,
+      quantity: savedTicket.quantity,
+      amount: savedTicket.amountPaid,
+      currency: 'INR',
+      paymentGateway: 'Razorpay',
+      paymentMode: resolvedPaymentMode,
+      status: 'SUCCESS',
+    }).catch((txErr) => console.error('[Transaction log error in /verify-payment]:', txErr.message))
 
     // Send ticket email in background
     sendTicketEmail(savedTicket).catch((err) =>
@@ -273,6 +384,166 @@ router.post('/verify-payment', async (req, res) => {
   } catch (error) {
     console.error('Verify Payment Error:', error)
     return res.status(500).json({ success: false, message: error.message || 'Payment verification failed' })
+  }
+})
+
+/**
+ * 1D. Razorpay Webhook Handler (Backup / Fail-Safe)
+ * POST /api/tickets/webhook
+ */
+router.post('/webhook', async (req, res) => {
+  try {
+    const webhookSignature = req.headers['x-razorpay-signature']
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET
+
+    // If a webhook secret is configured, verify HMAC signature
+    if (webhookSecret && webhookSecret !== 'sample_secret' && webhookSignature) {
+      try {
+        const expectedSignature = crypto
+          .createHmac('sha256', webhookSecret)
+          .update(typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
+          .digest('hex')
+
+        if (expectedSignature !== webhookSignature) {
+          console.warn('[Webhook] Invalid Razorpay webhook signature')
+          return res.status(400).json({ success: false, message: 'Invalid webhook signature' })
+        }
+      } catch (sigErr) {
+        console.warn('[Webhook] Signature verification error:', sigErr.message)
+      }
+    }
+
+    const event = req.body.event
+    console.log(`[Razorpay Webhook Event Received]: ${event}`)
+
+    // Handle successful payment capture
+    if (event === 'payment.captured' || event === 'order.paid') {
+      const paymentEntity = req.body.payload?.payment?.entity || {}
+      const orderEntity = req.body.payload?.order?.entity || {}
+
+      const paymentId = paymentEntity.id || `PAY_${Date.now()}`
+      const orderId = paymentEntity.order_id || orderEntity.id || ''
+
+      // Check if ticket was already created by client-side verification
+      const existingTicket = await Ticket.findOne({
+        $or: [{ paymentId }, { orderId: orderId && orderId !== '' ? orderId : 'NONE' }],
+      })
+
+      if (existingTicket) {
+        console.log(`[Webhook] Ticket already exists for ${paymentId} (${existingTicket.ticketId})`)
+        return res.status(200).json({ status: 'ok', message: 'Ticket already recorded' })
+      }
+
+      // If customer closed browser before client verification, issue ticket now
+      const customerEmail = paymentEntity.email || 'customer@vibeshillong.com'
+      const customerPhone = paymentEntity.contact || 'N/A'
+      const customerName = paymentEntity.notes?.customerName || paymentEntity.notes?.name || 'VIBE Guest'
+      const eventType = paymentEntity.notes?.eventType || 'adult'
+      const amountPaid = (paymentEntity.amount || 0) / 100
+      const quantity = Number(paymentEntity.notes?.quantity) || 1
+
+      const eventTitles = {
+        kids: 'Kids Neon Carnival (12 PM - 7:30 PM)',
+        adult: 'Adult Neon Nights ft. DJ Tina (8 PM Onwards)',
+        vip: 'VIP Neon Table & Backstage Pass',
+      }
+
+      const ticketId = generateTicketId(eventType.toUpperCase())
+
+      const resolvedPaymentMode = formatPaymentMethod(paymentEntity)
+
+      const newTicket = new Ticket({
+        ticketId,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        customerEmail: customerEmail.trim().toLowerCase(),
+        eventType,
+        eventTitle: eventTitles[eventType] || 'Neon Event Pass',
+        quantity,
+        amountPaid,
+        paymentId,
+        orderId,
+        paymentMode: resolvedPaymentMode,
+        status: 'VALID',
+      })
+
+      const savedTicket = await newTicket.save()
+      console.log(`[Webhook] Ticket ${ticketId} issued automatically for ${customerEmail}`)
+
+      // Record Transaction
+      await Transaction.create({
+        transactionId: paymentId,
+        orderId,
+        ticketId: savedTicket.ticketId,
+        ticketRef: savedTicket._id,
+        customerName: savedTicket.customerName,
+        customerPhone: savedTicket.customerPhone,
+        customerEmail: savedTicket.customerEmail,
+        eventType: savedTicket.eventType,
+        quantity: savedTicket.quantity,
+        amount: savedTicket.amountPaid,
+        currency: 'INR',
+        paymentGateway: 'Razorpay',
+        paymentMode: resolvedPaymentMode,
+        status: 'SUCCESS',
+      }).catch((txErr) => console.error('[Webhook Transaction log error]:', txErr.message))
+
+      // Send ticket confirmation email
+      sendTicketEmail(savedTicket).catch((err) =>
+        console.error('[Webhook Email error]:', err.message)
+      )
+    }
+
+    // Handle payment failure (e.g. wrong UPI PIN, insufficient funds, bank downtime)
+    if (event === 'payment.failed') {
+      const paymentEntity = req.body.payload?.payment?.entity || {}
+      const errorReason = paymentEntity.error_description || paymentEntity.error_reason || 'Unknown failure'
+      console.warn(`[Webhook - Payment Failed]: ID=${paymentEntity.id}, Customer=${paymentEntity.email || paymentEntity.contact}, Reason=${errorReason}`)
+
+      await Transaction.create({
+        transactionId: paymentEntity.id || `FAIL_${Date.now()}`,
+        orderId: paymentEntity.order_id || '',
+        customerName: paymentEntity.notes?.customerName || paymentEntity.notes?.name || 'Guest',
+        customerPhone: paymentEntity.contact || 'N/A',
+        customerEmail: paymentEntity.email || 'N/A',
+        eventType: paymentEntity.notes?.eventType || 'adult',
+        quantity: Number(paymentEntity.notes?.quantity) || 1,
+        amount: (paymentEntity.amount || 0) / 100,
+        currency: 'INR',
+        paymentGateway: 'Razorpay',
+        paymentMode: formatPaymentMethod(paymentEntity),
+        status: 'FAILED',
+        failureReason: errorReason,
+      }).catch((txErr) => console.error('[Failed Transaction log error]:', txErr.message))
+    }
+
+    // Handle refund processed (Auto-invalidate/cancel ticket at gate and mark Transaction REFUNDED)
+    if (event === 'refund.processed' || event === 'refund.created') {
+      const refundEntity = req.body.payload?.refund?.entity || {}
+      const paymentId = refundEntity.payment_id
+      const refundAmount = (refundEntity.amount || 0) / 100
+      if (paymentId) {
+        await Transaction.findOneAndUpdate(
+          { transactionId: paymentId },
+          { status: 'REFUNDED', refundAmount },
+          { new: true }
+        )
+        const cancelledTicket = await Ticket.findOneAndUpdate(
+          { paymentId },
+          { status: 'CANCELLED', cancellationReason: `Refunded: ₹${refundAmount}` },
+          { new: true }
+        )
+        if (cancelledTicket) {
+          console.log(`[Webhook] Ticket ${cancelledTicket.ticketId} marked as CANCELLED due to refund`)
+        }
+      }
+    }
+
+    // Always acknowledge 200 OK to Razorpay so it doesn't retry
+    return res.status(200).json({ status: 'ok' })
+  } catch (error) {
+    console.error('[Razorpay Webhook Error]:', error)
+    return res.status(500).json({ success: false, message: error.message })
   }
 })
 
@@ -407,6 +678,15 @@ router.get('/', async (req, res) => {
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message })
   }
+})
+
+/**
+ * 5. Direct Ticket View / Download Link from Email
+ * GET /api/tickets/:ticketId/pass
+ */
+router.get('/:ticketId/pass', (req, res) => {
+  const cleanId = (req.params.ticketId || '').trim().toUpperCase()
+  return res.redirect(`https://vibeshillong.com/?ticket=${cleanId}`)
 })
 
 export default router
