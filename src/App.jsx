@@ -17,6 +17,8 @@ import MobileStickyCTA from './components/MobileStickyCTA'
 import TicketModal from './components/TicketModal'
 import BookingDrawer from './components/BookingDrawer'
 import AdminPanel from './pages/AdminPanel'
+import KidsEventDetailPage from './pages/KidsEventDetailPage'
+import AdultEventDetailPage from './pages/AdultEventDetailPage'
 
 export default function App() {
   const [activeTicket, setActiveTicket] = useState(null)
@@ -28,22 +30,39 @@ export default function App() {
     setIsBookingOpen(true)
   }
 
-  const [isAdmin, setIsAdmin] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return (
-        window.location.pathname.startsWith('/admin') ||
-        window.location.hash.startsWith('#/admin')
-      )
+  const getRouteFromUrl = () => {
+    if (typeof window === 'undefined') return 'home'
+    const path = window.location.pathname.toLowerCase()
+    const hash = window.location.hash.toLowerCase()
+    const full = path + hash
+
+    if (full.includes('/admin')) return 'admin'
+    if (full.includes('/event/kids')) return 'kids-event'
+    if (full.includes('/event/adult')) return 'adult-event'
+    return 'home'
+  }
+
+  const [currentRoute, setCurrentRoute] = useState(getRouteFromUrl)
+
+  const navigateTo = (target) => {
+    const routeMap = {
+      home: '/',
+      'kids-event': '/event/kids',
+      'adult-event': '/event/adult',
+      admin: '/admin',
     }
-    return false
-  })
+    const targetUrl = routeMap[target] || '/'
+    try {
+      window.history.pushState({}, '', targetUrl)
+    } catch {
+      window.location.hash = targetUrl === '/' ? '' : `#${targetUrl}`
+    }
+    setCurrentRoute(target)
+  }
 
   useEffect(() => {
     const handleRouteCheck = () => {
-      const match =
-        window.location.pathname.startsWith('/admin') ||
-        window.location.hash.startsWith('#/admin')
-      setIsAdmin(match)
+      setCurrentRoute(getRouteFromUrl())
     }
 
     window.addEventListener('popstate', handleRouteCheck)
@@ -55,8 +74,54 @@ export default function App() {
   }, [])
 
   // If URL is /admin or #/admin, render the private Admin Panel
-  if (isAdmin) {
+  if (currentRoute === 'admin') {
     return <AdminPanel />
+  }
+
+  // If URL is /event/kids, render Kids Event Detail Page
+  if (currentRoute === 'kids-event') {
+    return (
+      <>
+        <KidsEventDetailPage
+          onOpenBooking={handleOpenBooking}
+          onNavigateHome={() => navigateTo('home')}
+        />
+        <BookingDrawer
+          isOpen={isBookingOpen}
+          onClose={() => setIsBookingOpen(false)}
+          selectedPackageKey={selectedPackageKey}
+          onTicketGenerated={(ticket) => setActiveTicket(ticket)}
+        />
+        <TicketModal
+          isOpen={Boolean(activeTicket)}
+          ticket={activeTicket}
+          onClose={() => setActiveTicket(null)}
+        />
+      </>
+    )
+  }
+
+  // If URL is /event/adult, render Adult Event Detail Page
+  if (currentRoute === 'adult-event') {
+    return (
+      <>
+        <AdultEventDetailPage
+          onOpenBooking={handleOpenBooking}
+          onNavigateHome={() => navigateTo('home')}
+        />
+        <BookingDrawer
+          isOpen={isBookingOpen}
+          onClose={() => setIsBookingOpen(false)}
+          selectedPackageKey={selectedPackageKey}
+          onTicketGenerated={(ticket) => setActiveTicket(ticket)}
+        />
+        <TicketModal
+          isOpen={Boolean(activeTicket)}
+          ticket={activeTicket}
+          onClose={() => setActiveTicket(null)}
+        />
+      </>
+    )
   }
 
   // Public Landing Page (Zero scanner clutter)
@@ -73,9 +138,9 @@ export default function App() {
         <Hero onOpenBooking={handleOpenBooking} />
         <Marquee />
         <Concept />
-        <KidsSection />
+        <KidsSection onNavigateToDetail={() => navigateTo('kids-event')} />
         <GalleryStrip onOpenBooking={handleOpenBooking} />
-        <AdultSection />
+        <AdultSection onNavigateToDetail={() => navigateTo('adult-event')} />
         <VideoShowcase />
         <VenueBanner />
         <TicketsSection onOpenBooking={handleOpenBooking} />

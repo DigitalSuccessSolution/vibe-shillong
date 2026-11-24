@@ -1,7 +1,7 @@
 import { ArrowRight, Clock3, Gamepad2, Gift, Palette, Sparkles, Zap } from 'lucide-react'
 import { kidsActivities } from '../data/eventData'
 
-export default function KidsSection() {
+export default function KidsSection({ onNavigateToDetail }) {
   const getIcon = (type) => {
     switch (type) {
       case 'palette': return <Palette size={18} className="text-neon-cyan shrink-0" />
@@ -70,15 +70,23 @@ export default function KidsSection() {
             Includes full festival access, UV face painting, craft materials, dance entertainment & awards entry
           </span>
         </div>
-        <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <div className="font-bold font-space text-2xl text-white">
             ₹1,000<span className="text-neon-cyan font-normal">–</span>₹1,200
           </div>
+          {onNavigateToDetail && (
+            <button
+              onClick={onNavigateToDetail}
+              className="inline-flex items-center justify-center gap-1.5 px-4 sm:px-5 py-3 text-xs sm:text-sm font-bold tracking-wide bg-white/10 hover:bg-white/15 text-white border border-white/20 transition-all rounded cursor-pointer"
+            >
+              EVENT DETAILS <ArrowRight size={15} />
+            </button>
+          )}
           <a
             href="#tickets"
-            className="inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-3 text-xs sm:text-sm font-bold tracking-wide bg-neon-cyan text-[#071016] hover:opacity-90 transition-all rounded shadow-[0_0_20px_rgba(53,234,255,0.25)]"
+            className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 text-xs sm:text-sm font-bold tracking-wide bg-neon-cyan text-[#071016] hover:opacity-90 transition-all rounded shadow-[0_0_20px_rgba(53,234,255,0.25)]"
           >
-            VIEW FAMILY PASSES <ArrowRight size={16} />
+            BOOK PASSES <ArrowRight size={16} />
           </a>
         </div>
       </div>
