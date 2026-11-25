@@ -341,6 +341,25 @@ router.post('/verify-payment', async (req, res) => {
       }
     }
 
+    // 1. Strict Idempotency Check: Prevent duplicate ticket generation & duplicate emails
+    const existingTicket = await Ticket.findOne({
+      $or: [
+        { paymentId: razorpay_payment_id },
+        { orderId: razorpay_order_id && razorpay_order_id !== '' ? razorpay_order_id : 'NONE' },
+      ],
+    })
+
+    if (existingTicket) {
+      console.log(
+        `[Verify-Payment] Ticket already exists for payment ${razorpay_payment_id} / order ${razorpay_order_id} (${existingTicket.ticketId}). Returning existing ticket.`
+      )
+      return res.status(200).json({
+        success: true,
+        message: 'Payment verified & official ticket already issued!',
+        ticket: existingTicket,
+      })
+    }
+
     const eventTitles = {
       kids: 'Kids Neon Carnival (12 PM - 7:30 PM)',
       adult: 'Adult Neon Nights ft. DJ Tina (8 PM Onwards)',
@@ -384,24 +403,6 @@ router.post('/verify-payment', async (req, res) => {
     })
 
     const savedTicket = await newTicket.save()
-
-    // Record Transaction in Transaction Collection
-    await Transaction.create({
-      transactionId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-      ticketId: savedTicket.ticketId,
-      ticketRef: savedTicket._id,
-      customerName: savedTicket.customerName,
-      customerPhone: savedTicket.customerPhone,
-      customerEmail: savedTicket.customerEmail,
-      eventType: savedTicket.eventType,
-      quantity: savedTicket.quantity,
-      amount: savedTicket.amountPaid,
-      currency: 'INR',
-      paymentGateway: 'Razorpay',
-      paymentMode: resolvedPaymentMode,
-      status: 'SUCCESS',
-    }).catch((txErr) => console.error('[Transaction log error in /verify-payment]:', txErr.message))
 
     // Record Transaction in Transaction Collection
     await Transaction.create({
@@ -471,26 +472,32 @@ router.post('/webhook', async (req, res) => {
       const paymentEntity = req.body.payload?.payment?.entity || {}
       const orderEntity = req.body.payload?.order?.entity || {}
 
-      const paymentId = paymentEntity.id || `PAY_${Date.now()}`
+      const paymentId = paymentEntity.id || (orderEntity.id ? `ORDER_${orderEntity.id}` : `PAY_${Date.now()}`)
       const orderId = paymentEntity.order_id || orderEntity.id || ''
 
-      // Check if ticket was already created by client-side verification
+      // Check if ticket was already created by client-side verification or previous webhook
       const existingTicket = await Ticket.findOne({
-        $or: [{ paymentId }, { orderId: orderId && orderId !== '' ? orderId : 'NONE' }],
+        $or: [
+          ...(paymentEntity.id ? [{ paymentId: paymentEntity.id }] : []),
+          ...(orderId && orderId !== '' ? [{ orderId }] : []),
+        ],
       })
 
       if (existingTicket) {
-        console.log(`[Webhook] Ticket already exists for ${paymentId} (${existingTicket.ticketId})`)
+        console.log(
+          `[Webhook] Ticket already exists for payment ${paymentId} / order ${orderId} (${existingTicket.ticketId}). Skipping duplicate generation.`
+        )
         return res.status(200).json({ status: 'ok', message: 'Ticket already recorded' })
       }
 
       // If customer closed browser before client verification, issue ticket now
-      const customerEmail = paymentEntity.email || 'customer@vibeshillong.com'
-      const customerPhone = paymentEntity.contact || 'N/A'
-      const customerName = paymentEntity.notes?.customerName || paymentEntity.notes?.name || 'VIBE Guest'
-      const eventType = paymentEntity.notes?.eventType || 'adult'
-      const amountPaid = (paymentEntity.amount || 0) / 100
-      const quantity = Number(paymentEntity.notes?.quantity) || 1
+      const notes = paymentEntity.notes || orderEntity.notes || {}
+      const customerEmail = paymentEntity.email || notes.customerEmail || 'customer@vibeshillong.com'
+      const customerPhone = notes.customerPhone || paymentEntity.contact || 'N/A'
+      const customerName = notes.customerName || notes.name || 'VIBE Guest'
+      const eventType = notes.eventType || 'adult'
+      const amountPaid = (paymentEntity.amount || orderEntity.amount_paid || 0) / 100
+      const quantity = Number(notes.quantity) || 1
 
       const eventTitles = {
         kids: 'Kids Neon Carnival (12 PM - 7:30 PM)',

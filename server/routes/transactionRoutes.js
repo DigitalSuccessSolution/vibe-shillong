@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
     const tickets = await Ticket.find().lean()
     if (tickets.length > 0) {
       for (const t of tickets) {
-        const txId = t.paymentId || `TX_${t.ticketId}`
+        const txId = t.paymentId && t.paymentId !== 'OFFLINE_OR_MANUAL' ? t.paymentId : `TX_${t.ticketId}`
         const exists = await Transaction.findOne({ transactionId: txId })
         if (!exists) {
           const rawMode = t.paymentMode || 'UPI'
@@ -51,7 +51,7 @@ router.get('/', async (req, res) => {
             status: t.status === 'CANCELLED' ? 'REFUNDED' : 'SUCCESS',
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
-          })
+          }).catch((err) => console.warn('[Transaction auto-sync warning]:', err.message))
         }
       }
     }

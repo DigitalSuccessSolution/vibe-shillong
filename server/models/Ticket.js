@@ -46,6 +46,7 @@ const ticketSchema = new mongoose.Schema(
     paymentId: {
       type: String,
       default: 'OFFLINE_OR_MANUAL',
+      index: true,
     },
     paymentMode: {
       type: String,
@@ -53,6 +54,7 @@ const ticketSchema = new mongoose.Schema(
     },
     orderId: {
       type: String,
+      index: true,
     },
     // Gate validation status: VALID -> USED
     status: {
