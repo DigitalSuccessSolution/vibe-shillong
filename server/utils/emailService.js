@@ -28,21 +28,39 @@ export async function sendTicketEmail(ticket) {
 
     const htmlContent = generateTicketEmailHtml(ticket)
 
+    // Plain text alternative for anti-spam filters (RFC standard)
+    const plainTextContent = `Hello ${ticket.customerName || 'Festival Guest'},
+
+Your official festival pass for VIBE Shillong is confirmed!
+
+Ticket ID: ${ticket.ticketId}
+Event: ${ticket.eventTitle || ticket.eventType} Pass
+Date: Saturday, 12 December 2026
+Venue: F Lounge by FTV, Shillong
+Quantity: ${ticket.quantity || 1} Attendee(s)
+Amount Paid: ₹${Number(ticket.amountPaid || 0).toLocaleString('en-IN')}
+Status: CONFIRMED / VALID
+
+Please present the QR code in this email at the gate scanner for entry.
+Live pass view: https://vibeshillong.com/?ticket=${ticket.ticketId}
+
+For queries, contact vibeshillong@gmail.com
+VIBE Shillong 2026 · Official Ticketing`
+
     const mailOptions = {
       from: `"VIBE Shillong" <${EMAIL_USER}>`,
       to: ticket.customerEmail,
-      subject: `🎟️ Your VIBE Shillong Festival Pass (${ticket.ticketId})`,
+      replyTo: EMAIL_USER,
+      subject: `Your VIBE Shillong Festival Pass (${ticket.ticketId})`,
+      text: plainTextContent,
       html: htmlContent,
-      attachments: [
-        {
-          filename: `VIBE-Ticket-${ticket.ticketId || 'Pass'}.html`,
-          content: htmlContent,
-          contentType: 'text/html',
-        },
-      ],
+      headers: {
+        'X-Entity-Ref-ID': ticket.ticketId || 'VIBE-PASS',
+        'X-Mailer': 'VIBE Shillong Ticket Engine',
+      },
     }
 
-    // Admin copy: Admin also receives a copy of every attendee's ticket
+    // Admin copy: Admin receives a copy of attendee tickets
     if (EMAIL_USER && ticket.customerEmail.trim().toLowerCase() !== EMAIL_USER.trim().toLowerCase()) {
       mailOptions.bcc = EMAIL_USER.trim()
     }

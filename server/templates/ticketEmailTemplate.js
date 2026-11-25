@@ -100,11 +100,11 @@ export function generateTicketEmailHtml(ticket) {
         <!-- Pre-Header Title -->
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-bottom: 12px;">
           <tr>
-            <td align="left" style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: ${theme.accent}; font-weight: 700;">
+            <td align="left" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: ${theme.accent}; font-weight: 600;">
               ⚡ Official Festival Entry Pass
             </td>
-            <td align="right" style="font-size: 11px; font-family: 'Courier New', monospace; color: #8f85a3;">
-              ID: ${ticketId}
+            <td align="right" style="font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #8f85a3;">
+              ID: <span style="font-family: 'Courier New', monospace; font-weight: 600; color: #ffffff;">${ticketId}</span>
             </td>
           </tr>
         </table>
@@ -112,7 +112,7 @@ export function generateTicketEmailHtml(ticket) {
         <!-- ======================================================== -->
         <!-- MAIN TICKET PASS (RESPONSIVE 2-COL / STACK ON MOBILE) -->
         <!-- ======================================================== -->
-        <table width="100%" class="ticket-wrapper" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #0d071a; border: 2px solid ${theme.border}; border-radius: 22px; box-shadow: 0 10px 40px ${theme.glow}; overflow: hidden;">
+        <table width="100%" class="ticket-wrapper" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #0d071a; border: 1.5px solid ${theme.border}; border-radius: 20px; box-shadow: 0 10px 30px ${theme.glow}; overflow: hidden;">
           <tr>
             <td>
               <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -121,22 +121,22 @@ export function generateTicketEmailHtml(ticket) {
                   <!-- =================================================== -->
                   <!-- LEFT / MAIN PASS SECTION -->
                   <!-- =================================================== -->
-                  <td valign="top" class="ticket-col-main" style="padding: 24px 24px;">
+                  <td valign="top" class="ticket-col-main" style="padding: 22px 22px;">
                     
                     <!-- Top Header: Logo + Title + Pass Badge -->
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 14px;">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 12px;">
                       <tr>
                         <td valign="middle">
                           <table border="0" cellspacing="0" cellpadding="0">
                             <tr>
                               <td valign="middle" style="padding-right: 10px;">
-                                <img src="https://vibeshillong.com/logo.jpeg" alt="VIBE" width="38" height="38" style="display: block; border-radius: 8px;" />
+                                <img src="https://vibeshillong.com/logo.jpeg" alt="VIBE" width="36" height="36" style="display: block; border-radius: 8px;" />
                               </td>
                               <td valign="middle">
-                                <span style="font-size: 14px; font-weight: 800; letter-spacing: 2px; color: #ffffff; display: block;">
+                                <span style="font-size: 13px; font-weight: 700; letter-spacing: 1.5px; color: #ffffff; display: block;">
                                   VIBE SHILLONG
                                 </span>
-                                <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.5); font-family: 'Courier New', monospace; display: block; margin-top: 2px;">
+                                <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.5); display: block; margin-top: 2px;">
                                   Official Festival Pass · 2026
                                 </span>
                               </td>
@@ -144,7 +144,7 @@ export function generateTicketEmailHtml(ticket) {
                           </table>
                         </td>
                         <td align="right" valign="middle">
-                          <span style="display: inline-block; background-color: ${theme.badgeBg}; color: ${theme.badgeText}; font-size: 10px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; padding: 5px 12px; border-radius: 20px;">
+                          <span style="display: inline-block; background-color: ${theme.badgeBg}; color: ${theme.badgeText}; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 11px; border-radius: 16px;">
                             ${eventTypeKey.toUpperCase()} PASS
                           </span>
                         </td>
@@ -153,51 +153,51 @@ export function generateTicketEmailHtml(ticket) {
 
                     <!-- Attendee Name -->
                     <div style="padding-top: 14px; margin-bottom: 12px;">
-                      <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.4); font-family: 'Courier New', monospace; display: block; margin-bottom: 2px;">
+                      <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); display: block; margin-bottom: 3px;">
                         ATTENDEE NAME
                       </span>
-                      <span class="attendee-name" style="font-size: 22px; font-weight: 900; letter-spacing: 0.5px; color: #ffffff; text-transform: uppercase; display: block; line-height: 1.2;">
+                      <span class="attendee-name" style="font-size: 19px; font-weight: 700; letter-spacing: 0.3px; color: #ffffff; text-transform: uppercase; display: block; line-height: 1.25;">
                         ${customerName}
                       </span>
                     </div>
 
                     <!-- 2-Column Specs (Date & Timing Box) -->
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; margin-bottom: 14px; text-align: center;">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; margin-bottom: 12px; text-align: center;">
                       <tr>
-                        <td width="50%" style="padding: 10px 8px; border-right: 1px solid rgba(255, 255, 255, 0.1);">
-                          <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); display: block; font-family: 'Courier New', monospace;">DATE</span>
-                          <span style="font-size: 12px; font-weight: 800; color: #ffffff; display: block; margin-top: 2px;">12 DEC 2026</span>
+                        <td width="50%" style="padding: 9px 8px; border-right: 1px solid rgba(255, 255, 255, 0.08);">
+                          <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); display: block;">DATE</span>
+                          <span style="font-size: 12px; font-weight: 600; color: #ffffff; display: block; margin-top: 2px;">12 DEC 2026</span>
                         </td>
-                        <td width="50%" style="padding: 10px 8px;">
-                          <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); display: block; font-family: 'Courier New', monospace;">TIMING</span>
-                          <span style="font-size: 12px; font-weight: 800; color: ${theme.accent}; display: block; margin-top: 2px;">${timingText}</span>
+                        <td width="50%" style="padding: 9px 8px;">
+                          <span style="font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); display: block;">TIMING</span>
+                          <span style="font-size: 12px; font-weight: 600; color: ${theme.accent}; display: block; margin-top: 2px;">${timingText}</span>
                         </td>
                       </tr>
                     </table>
 
                     <!-- Venue & Pass Metadata -->
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px; font-size: 11px; line-height: 1.6; color: rgba(255, 255, 255, 0.8);">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px; font-size: 11px; line-height: 1.5; color: rgba(255, 255, 255, 0.75);">
                       <tr>
                         <td style="padding-bottom: 3px;">
-                          📍 <strong>F Lounge by FTV, Shillong</strong>
+                          📍 <span style="font-weight: 600; color: #ffffff;">F Lounge by FTV, Shillong</span>
                         </td>
                       </tr>
                       <tr>
-                        <td style="color: rgba(255, 255, 255, 0.55); font-size: 10px;">
+                        <td style="color: rgba(255, 255, 255, 0.5); font-size: 10px;">
                           🎟️ Qty: ${quantity} Pass • ₹${amountPaid} Paid • Admit One • Non-Transferable
                         </td>
                       </tr>
                     </table>
 
                     <!-- Status Strip & Barcode -->
-                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 10px;">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 10px;">
                       <tr>
                         <td align="left">
-                          <span style="display: inline-block; background-color: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 6px;">
+                          <span style="display: inline-block; background-color: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; font-size: 10px; font-weight: 600; padding: 2px 9px; border-radius: 6px;">
                             ✓ Status: VALID
                           </span>
                         </td>
-                        <td align="right" style="font-family: 'Courier New', monospace; font-size: 11px; color: rgba(255,255,255,0.25); letter-spacing: 3px;">
+                        <td align="right" style="font-family: 'Courier New', monospace; font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 3px;">
                           |||||||||||||||||||
                         </td>
                       </tr>
@@ -208,29 +208,29 @@ export function generateTicketEmailHtml(ticket) {
                   <!-- =================================================== -->
                   <!-- RIGHT / DIGITAL STUB SECTION (RESPONSIVE STACK) -->
                   <!-- =================================================== -->
-                  <td width="190" valign="top" class="ticket-col-stub" style="border-left: 2px dashed rgba(255, 255, 255, 0.18); background-color: rgba(0, 0, 0, 0.45); padding: 22px 16px; text-align: center;">
+                  <td width="185" valign="top" class="ticket-col-stub" style="border-left: 2px dashed rgba(255, 255, 255, 0.14); background-color: rgba(0, 0, 0, 0.4); padding: 20px 14px; text-align: center;">
                     
-                    <span style="font-size: 9px; font-family: 'Courier New', monospace; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); text-transform: uppercase; display: block; margin-bottom: 10px; font-weight: 700;">
+                    <span style="font-size: 9px; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); text-transform: uppercase; display: block; margin-bottom: 8px; font-weight: 600;">
                       DIGITAL ENTRY STUB
                     </span>
 
                     <!-- White QR Code Box -->
-                    <div style="background-color: #ffffff; padding: 10px; border-radius: 14px; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.6);">
-                      <img src="${qrImageUrl}" alt="Scan QR for Entry" width="130" height="130" style="display: block; margin: 0 auto; border-radius: 4px;" />
-                      <span style="display: block; font-size: 8px; font-family: 'Courier New', monospace; font-weight: 900; color: #080414; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px;">
+                    <div style="background-color: #ffffff; padding: 8px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                      <img src="${qrImageUrl}" alt="Scan QR for Entry" width="125" height="125" style="display: block; margin: 0 auto; border-radius: 4px;" />
+                      <span style="display: block; font-size: 8px; font-weight: 700; color: #080414; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 4px;">
                         SCAN FOR ENTRY
                       </span>
                     </div>
 
                     <!-- Official Ticket Code -->
-                    <div style="margin-top: 12px;">
-                      <span style="font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); display: block; font-family: 'Courier New', monospace;">
+                    <div style="margin-top: 10px;">
+                      <span style="font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); display: block;">
                         OFFICIAL CODE
                       </span>
-                      <span style="font-family: 'Courier New', monospace; font-size: 12px; font-weight: 800; color: ${theme.accent}; letter-spacing: 1px; display: block; margin-top: 3px;">
+                      <span style="font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700; color: ${theme.accent}; letter-spacing: 0.5px; display: block; margin-top: 2px;">
                         ${ticketId}
                       </span>
-                      <span style="font-size: 8px; font-family: 'Courier New', monospace; color: rgba(255,255,255,0.35); display: block; margin-top: 5px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px;">
+                      <span style="font-size: 8px; color: rgba(255,255,255,0.3); display: block; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 3px;">
                         1-TIME FAST SCAN
                       </span>
                     </div>
@@ -246,21 +246,21 @@ export function generateTicketEmailHtml(ticket) {
         <!-- ======================================================== -->
         <!-- ENTRY INSTRUCTIONS & VENUE GUIDELINES -->
         <!-- ======================================================== -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 16px; background-color: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 14px 18px; font-size: 11px; line-height: 1.6; color: #a59cb8;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 14px; background-color: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 12px 16px; font-size: 11px; line-height: 1.55; color: #9d94b0;">
           <tr>
             <td>
-              ⚡ <strong>Entry Instructions:</strong> Show this email or the scannable QR stub above at the F Lounge by FTV entrance for instant handheld scanner check-in. Physical Government Photo ID (Aadhaar/Driving License/Passport) is mandatory.
+              ⚡ <span style="font-weight: 600; color: #ffffff;">Entry Instructions:</span> Show this email or the scannable QR stub above at the F Lounge by FTV entrance for instant handheld scanner check-in. Physical Government Photo ID is required.
               <br><br>
-              🎨 <strong>Dress Code:</strong> Wear white or neon fluorescent outfits to glow under ultraviolet blacklights. Free UV neon face-styling booths inside the venue!
+              🎨 <span style="font-weight: 600; color: #ffffff;">Dress Code:</span> Wear white or neon fluorescent outfits to glow under ultraviolet blacklights. Free UV neon face-styling booths inside the venue!
             </td>
           </tr>
         </table>
 
         <!-- Footer -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 14px; text-align: center; font-size: 10px; color: #625977; line-height: 1.6;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 14px; text-align: center; font-size: 10px; color: #625977; line-height: 1.55;">
           <tr>
             <td>
-              Need assistance? WhatsApp <strong>+91 87318 46927</strong> or email vibeshillong@gmail.com
+              Need assistance? WhatsApp <span style="font-weight: 600; color: #b5accc;">+91 87318 46927</span> or email vibeshillong@gmail.com
               <br>
               © 2026 VIBE Shillong. All rights reserved. F Lounge by FTV, Shillong.
             </td>
