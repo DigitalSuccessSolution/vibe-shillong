@@ -13,7 +13,7 @@ import AttendeesPage from './admin/AttendeesPage'
 import AnalyticsPage from './admin/AnalyticsPage'
 import PackagesPage from './admin/PackagesPage'
 import InquiriesPage from './admin/InquiriesPage'
-import { API_BASE_URL, ADMIN_USER, ADMIN_PASS } from '../config/api'
+import { API_BASE_URL, ADMIN_ROUTE_PATH } from '../config/api'
 
 export default function AdminPanel() {
   // Authentication State
@@ -26,6 +26,7 @@ export default function AdminPanel() {
   })
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   // Route & Navigation State
   const getTabFromUrl = () => {
@@ -61,22 +62,45 @@ export default function AdminPanel() {
   }, [])
 
   // Handle Login
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
     setLoginError('')
 
     const cleanUser = (loginForm.username || '').trim()
     const cleanPass = (loginForm.password || '').trim()
 
-    if (cleanUser === ADMIN_USER && cleanPass === ADMIN_PASS) {
-      try {
-        sessionStorage.setItem('neon_admin_auth', 'true')
-      } catch {
-        // Fallback
+    if (!cleanUser || !cleanPass) {
+      setLoginError('Please enter both username and password.')
+      return
+    }
+
+    setIsLoggingIn(true)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/tickets/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+      })
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        try {
+          sessionStorage.setItem('neon_admin_auth', 'true')
+          sessionStorage.setItem('neon_admin_user', data.user?.username || cleanUser)
+          if (data.token) {
+            sessionStorage.setItem('neon_admin_token', data.token)
+          }
+        } catch {
+          // Fallback
+        }
+        setIsAuthenticated(true)
+      } else {
+        setLoginError(data.message || 'Invalid Username or Password.')
       }
-      setIsAuthenticated(true)
-    } else {
-      setLoginError('Invalid Username or Password. Please check .env credentials.')
+    } catch {
+      setLoginError('Unable to connect to authentication server. Please verify backend is running.')
+    } finally {
+      setIsLoggingIn(false)
     }
   }
 
@@ -84,6 +108,8 @@ export default function AdminPanel() {
   const handleLogout = () => {
     try {
       sessionStorage.removeItem('neon_admin_auth')
+      sessionStorage.removeItem('neon_admin_user')
+      sessionStorage.removeItem('neon_admin_token')
     } catch {
       // Fallback
     }
@@ -93,11 +119,12 @@ export default function AdminPanel() {
 
   // Navigate to separate page URLs
   const navigateTo = (tab) => {
-    const targetPath = tab === 'scanner' ? '/admin/scanner' : `/admin/${tab}`
+    const slug = ADMIN_ROUTE_PATH
+    const targetPath = tab === 'scanner' ? `/${slug}/scanner` : `/${slug}/${tab}`
     try {
       window.history.pushState({}, '', targetPath)
     } catch {
-      window.location.hash = `#/admin/${tab}`
+      window.location.hash = `#/${slug}/${tab}`
     }
     setActiveNav(tab)
     setSidebarOpen(false)
@@ -139,7 +166,7 @@ export default function AdminPanel() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#06030b] text-[#f8f5ff] font-dm flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-[#0f0a1c] border-2 border-neon-cyan/30 rounded-3xl p-8 shadow-[0_0_50px_rgba(53,234,255,0.15)]">
+        <div className="w-full max-w-md bg-[#0f0a1c] border-2 border-neon-cyan/30 rounded-3xl p-8">
           <div className="text-center mb-6">
             <img
               src="/logo.jpeg"
@@ -188,9 +215,17 @@ export default function AdminPanel() {
 
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl bg-neon-cyan text-[#071016] font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer shadow-[0_0_20px_rgba(53,234,255,0.3)] mt-2"
+              disabled={isLoggingIn}
+              className="w-full py-3.5 rounded-xl bg-neon-cyan text-[#071016] font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Authenticate & Access
+              {isLoggingIn ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                'Authenticate & Access'
+              )}
             </button>
 
             <div className="pt-2 text-center">

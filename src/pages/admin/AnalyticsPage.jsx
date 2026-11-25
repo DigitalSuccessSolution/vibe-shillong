@@ -26,7 +26,7 @@ export default function AnalyticsPage({ ticketsList = [] }) {
     <div className="space-y-6">
       {/* 4 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-4 shadow-lg">
+        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-4">
           <div className="flex items-center justify-between text-white/50 text-[11px] uppercase font-bold mb-1">
             <span>Total Passes</span>
             <TicketIcon size={14} className="text-neon-pink" />
@@ -34,7 +34,7 @@ export default function AnalyticsPage({ ticketsList = [] }) {
           <div className="font-space font-bold text-2xl text-white">{totalSold}</div>
         </div>
 
-        <div className="bg-[#0f091f] border border-emerald-500/30 rounded-2xl p-4 shadow-lg">
+        <div className="bg-[#0f091f] border border-emerald-500/30 rounded-2xl p-4">
           <div className="flex items-center justify-between text-emerald-400 text-[11px] uppercase font-bold mb-1">
             <span>Checked-In</span>
             <CheckCircle2 size={14} className="text-emerald-400" />
@@ -42,7 +42,7 @@ export default function AnalyticsPage({ ticketsList = [] }) {
           <div className="font-space font-bold text-2xl text-emerald-300">{totalScanned}</div>
         </div>
 
-        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-4 shadow-lg">
+        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-4">
           <div className="flex items-center justify-between text-amber-400 text-[11px] uppercase font-bold mb-1">
             <span>Pending Entry</span>
             <Clock size={14} className="text-amber-400" />
@@ -50,7 +50,7 @@ export default function AnalyticsPage({ ticketsList = [] }) {
           <div className="font-space font-bold text-2xl text-amber-300">{totalPending}</div>
         </div>
 
-        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-4 shadow-lg">
+        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-4">
           <div className="flex items-center justify-between text-neon-cyan text-[11px] uppercase font-bold mb-1">
             <span>Total Value</span>
             <DollarSign size={14} className="text-neon-cyan" />
@@ -62,7 +62,7 @@ export default function AnalyticsPage({ ticketsList = [] }) {
       </div>
 
       {/* Attendance Ratio Bar */}
-      <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl">
+      <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8">
         <h3 className="font-bold font-space text-xl text-white mb-2">Gate Check-In Progress</h3>
         <p className="text-xs text-white/50 mb-6">Real-time attendance ratio from verified gate scans</p>
 
@@ -99,7 +99,7 @@ export default function AnalyticsPage({ ticketsList = [] }) {
             return (
               <div
                 key={pkg.key}
-                className={`bg-[#0f091f] border rounded-2xl p-5 shadow-lg ${borderColor}`}
+                className={`bg-[#0f091f] border rounded-2xl p-5 ${borderColor}`}
               >
                 <span className="text-[10px] uppercase tracking-wider font-bold block mb-1 opacity-80">
                   {pkg.badge || `${pkg.title} Tier`}

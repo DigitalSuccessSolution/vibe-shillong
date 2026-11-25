@@ -12,6 +12,7 @@
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^2.6.4",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.468.0",
     "qrcode.react": "^4.2.0",

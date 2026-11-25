@@ -10,30 +10,20 @@ export default function KidsEventDetailPage({ packages = [], onOpenBooking, onNa
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#07040e] font-dm text-[#f8f5ff] selection:bg-neon-cyan selection:text-black">
-      {/* Clean Sticky Header (No heavy shadows) */}
-      <header className="sticky top-0 z-50 w-full bg-[#07040e]/95 backdrop-blur-md border-b border-white/10 px-6 sm:px-10 py-3.5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <div className="w-full font-dm text-[#f8f5ff] selection:bg-neon-cyan selection:text-black">
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-6 py-6 sm:py-10 pb-20 sm:pb-14 space-y-10">
+        {/* Breadcrumb Navigation */}
+        <div className="pb-2">
           <button
+            type="button"
             onClick={onNavigateHome}
-            className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-white/80 hover:text-white transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-white/70 hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft size={16} />
-            <span className="hidden xs:inline">Back to Festival Landing</span>
-            <span className="xs:hidden">Back to Festival</span>
-          </button>
-
-          <button
-            onClick={() => onOpenBooking('kids')}
-            className="hidden sm:inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold bg-neon-cyan text-[#071016] hover:opacity-90 transition-all rounded-lg cursor-pointer"
-          >
-            Book Pass (₹{kidsPrice.toLocaleString('en-IN')}) <ArrowRight size={14} />
+            <span>Back to Festival Landing</span>
           </button>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-6 py-10 sm:py-14 pb-28 sm:pb-14 space-y-12">
         {/* Main Title & Overview (Flat, Minimal) */}
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 text-xs font-mono">

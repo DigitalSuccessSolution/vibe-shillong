@@ -1,5 +1,5 @@
 import { QrCode, Ticket, TrendingUp, Tag, CreditCard, LogOut, ExternalLink, X, MessageSquare } from 'lucide-react'
-import { ADMIN_USER } from '../../config/api'
+import { ADMIN_ROUTE_PATH } from '../../config/api'
 
 export default function AdminSidebar({
   activeNav,
@@ -9,13 +9,14 @@ export default function AdminSidebar({
   onLogout,
   totalSold = 0,
 }) {
+  const adminUsername = typeof sessionStorage !== 'undefined' ? (sessionStorage.getItem('neon_admin_user') || 'Admin') : 'Admin'
   const navItems = [
-    { id: 'scanner', label: 'Gate Scanner', icon: QrCode, badge: 'Live', path: '/admin/scanner' },
-    { id: 'attendees', label: 'Booked Tickets', icon: Ticket, count: totalSold, path: '/admin/attendees' },
-    { id: 'transactions', label: 'Transactions', icon: CreditCard, count: totalSold, path: '/admin/transactions' },
-    { id: 'packages', label: 'Ticket Packages', icon: Tag, path: '/admin/packages' },
-    { id: 'inquiries', label: 'Inquiries & Leads', icon: MessageSquare, path: '/admin/inquiries' },
-    { id: 'analytics', label: 'Analytics & Stats', icon: TrendingUp, path: '/admin/analytics' },
+    { id: 'scanner', label: 'Gate Scanner', icon: QrCode, badge: 'Live', path: `/${ADMIN_ROUTE_PATH}/scanner` },
+    { id: 'attendees', label: 'Booked Tickets', icon: Ticket, path: `/${ADMIN_ROUTE_PATH}/attendees` },
+    { id: 'transactions', label: 'Transactions', icon: CreditCard, path: `/${ADMIN_ROUTE_PATH}/transactions` },
+    { id: 'packages', label: 'Ticket Packages', icon: Tag, path: `/${ADMIN_ROUTE_PATH}/packages` },
+    { id: 'inquiries', label: 'Inquiries & Leads', icon: MessageSquare, path: `/${ADMIN_ROUTE_PATH}/inquiries` },
+    { id: 'analytics', label: 'Analytics & Stats', icon: TrendingUp, path: `/${ADMIN_ROUTE_PATH}/analytics` },
   ]
 
   return (
@@ -65,7 +66,7 @@ export default function AdminSidebar({
                   onNavigate(item.id)
                 }}
                 className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${active
-                    ? 'bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/40 shadow-[0_0_15px_rgba(53,234,255,0.2)]'
+                    ? 'bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/40'
                     : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
                   }`}
               >
@@ -76,11 +77,6 @@ export default function AdminSidebar({
                 {item.badge && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] bg-neon-pink text-[#080612] font-black uppercase">
                     {item.badge}
-                  </span>
-                )}
-                {typeof item.count === 'number' && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 text-white/80 font-mono">
-                    {item.count}
                   </span>
                 )}
               </a>
@@ -95,7 +91,7 @@ export default function AdminSidebar({
         <div className="flex items-center gap-2.5 p-2 rounded-xl bg-black/40 border border-white/5 text-xs">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <div className="flex-1 truncate">
-            <span className="text-white font-bold block truncate">{ADMIN_USER}</span>
+            <span className="text-white font-bold block truncate">{adminUsername}</span>
             <span className="text-[10px] text-white/40 block">Gate Supervisor</span>
           </div>
         </div>

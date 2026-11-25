@@ -3,7 +3,7 @@ import { img } from '../data/eventData'
 
 export default function Concept({ onNavigateToKids, onNavigateToAdult }) {
   return (
-    <section className="py-24 max-w-6xl mx-auto px-6" id="experience">
+    <section className="py-24 max-w-6xl mx-auto px-6 scroll-mt-28" id="experience">
       {/* Clean Editorial Heading */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-end mb-14">
         <div className="md:col-span-7">

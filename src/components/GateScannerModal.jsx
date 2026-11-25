@@ -14,7 +14,7 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import { Html5Qrcode } from 'html5-qrcode'
-import { API_BASE_URL, ADMIN_USER, ADMIN_PASS } from '../config/api'
+import { API_BASE_URL } from '../config/api'
 
 export default function GateScannerModal({ isOpen, onClose }) {
   // Safe Authentication State with error protection
@@ -27,6 +27,7 @@ export default function GateScannerModal({ isOpen, onClose }) {
   })
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   // Scanner States
   const [activeTab, setActiveTab] = useState('camera') // 'camera' | 'manual'
@@ -42,22 +43,45 @@ export default function GateScannerModal({ isOpen, onClose }) {
   const lastScannedRef = useRef({ code: '', time: 0 })
 
   // Handle Admin Login
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
     setLoginError('')
 
     const cleanUser = (loginForm.username || '').trim()
     const cleanPass = (loginForm.password || '').trim()
 
-    if (cleanUser === ADMIN_USER && cleanPass === ADMIN_PASS) {
-      try {
-        sessionStorage.setItem('neon_admin_auth', 'true')
-      } catch {
-        // Fallback for restricted storage
+    if (!cleanUser || !cleanPass) {
+      setLoginError('Please enter both username and password.')
+      return
+    }
+
+    setIsLoggingIn(true)
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/tickets/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+      })
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        try {
+          sessionStorage.setItem('neon_admin_auth', 'true')
+          sessionStorage.setItem('neon_admin_user', data.user?.username || cleanUser)
+          if (data.token) {
+            sessionStorage.setItem('neon_admin_token', data.token)
+          }
+        } catch {
+          // Fallback for restricted storage
+        }
+        setIsAuthenticated(true)
+      } else {
+        setLoginError(data.message || 'Invalid Username or Password.')
       }
-      setIsAuthenticated(true)
-    } else {
-      setLoginError('Invalid Username or Password. Please check .env credentials.')
+    } catch {
+      setLoginError('Unable to connect to authentication server. Please check backend.')
+    } finally {
+      setIsLoggingIn(false)
     }
   }
 
@@ -65,6 +89,8 @@ export default function GateScannerModal({ isOpen, onClose }) {
   const handleLogout = () => {
     try {
       sessionStorage.removeItem('neon_admin_auth')
+      sessionStorage.removeItem('neon_admin_user')
+      sessionStorage.removeItem('neon_admin_token')
     } catch {
       // Safe fallback
     }
@@ -359,9 +385,17 @@ export default function GateScannerModal({ isOpen, onClose }) {
 
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl bg-neon-cyan text-[#071016] font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer shadow-[0_0_20px_rgba(53,234,255,0.3)] mt-2"
+              disabled={isLoggingIn}
+              className="w-full py-3.5 rounded-xl bg-neon-cyan text-[#071016] font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer shadow-[0_0_20px_rgba(53,234,255,0.3)] mt-2 disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Authenticate & Open Scanner
+              {isLoggingIn ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                'Authenticate & Open Scanner'
+              )}
             </button>
 
             <p className="text-center text-[11px] text-white/40 pt-1">

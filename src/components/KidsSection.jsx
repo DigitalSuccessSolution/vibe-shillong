@@ -15,7 +15,7 @@ export default function KidsSection({ packages = [], onNavigateToDetail }) {
   }
 
   return (
-    <section className="py-20 max-w-6xl mx-auto px-6 relative" id="kids">
+    <section className="py-20 max-w-6xl mx-auto px-6 relative scroll-mt-28" id="kids">
       {/* Section Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-8">
         <div>

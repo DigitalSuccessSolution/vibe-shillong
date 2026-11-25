@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react'
 import { X, Check, Lock, Minus, Plus, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react'
 import { API_BASE_URL } from '../config/api'
 import { DEFAULT_PACKAGES } from '../constants/packages'
+import { useAuth, GoogleIcon } from '../context/AuthContext'
+
+export function RazorpayBadge({ className = '' }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 font-black tracking-normal ${className}`}>
+      <img
+        src="/razorpay.svg"
+        alt="Razorpay"
+        className="w-4 h-4 object-contain brightness-0"
+      />
+      <span>Razorpay</span>
+    </span>
+  )
+}
 
 export default function BookingDrawer({
   isOpen,
@@ -9,17 +23,42 @@ export default function BookingDrawer({
   selectedPackageKey = 'adult',
   onTicketGenerated,
 }) {
+  const { user, loginWithGoogle } = useAuth()
   const [packages, setPackages] = useState(DEFAULT_PACKAGES)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    name: user?.name || '',
+    email: user?.email || '',
     phone: '',
     event: selectedPackageKey || 'adult',
     quantity: 1,
   })
+
+  // Auto-sync user details when logged in or drawer opens
+  useEffect(() => {
+    if (user && user.email) {
+      setFormData((prev) => ({
+        ...prev,
+        name: prev.name || user.name || '',
+        email: user.email,
+      }))
+      setErrorMessage('')
+    } else {
+      // User is logged out -> strictly wipe verified name and email
+      setFormData((prev) => ({
+        ...prev,
+        name: '',
+        email: '',
+      }))
+    }
+  }, [user, isOpen])
+
+  // Clear error message whenever drawer closes or re-opens
+  useEffect(() => {
+    setErrorMessage('')
+  }, [isOpen])
 
   // Fetch live packages from database
   useEffect(() => {
@@ -70,6 +109,32 @@ export default function BookingDrawer({
     setLoading(true)
     setErrorMessage('')
 
+    // 1. Full Name check
+    if (!formData.name || !formData.name.trim()) {
+      setErrorMessage('Please enter your full name.')
+      setLoading(false)
+      return
+    }
+
+    // 2. Google Verification Check
+    if (!user || !user.email) {
+      setErrorMessage('Please sign in with Google to verify your email address.')
+      setLoading(false)
+      return
+    }
+
+    // 3. Mobile Number Check
+    const cleanPhone = (formData.phone || '').replace(/\D/g, '')
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      setErrorMessage('Please enter a valid 10-digit mobile number.')
+      setLoading(false)
+      return
+    }
+
+    const verifiedEmail = user.email.toLowerCase().trim()
+    const verifiedName = formData.name.trim() || user.name || 'Festival Guest'
+    const fullPhone = `+91 ${cleanPhone}`
+
     try {
       // 1. Create Razorpay order via server
       const orderRes = await fetch(`${API_BASE_URL}/api/tickets/create-order`, {
@@ -78,9 +143,9 @@ export default function BookingDrawer({
         body: JSON.stringify({
           amount: totalAmount,
           eventType: formData.event,
-          customerName: formData.name,
-          customerEmail: formData.email,
-          customerPhone: formData.phone,
+          customerName: verifiedName,
+          customerEmail: verifiedEmail,
+          customerPhone: fullPhone,
           quantity: quantity,
         }),
       })
@@ -104,9 +169,9 @@ export default function BookingDrawer({
                 razorpay_order_id: orderData.orderId,
                 razorpay_payment_id: fakePaymentId,
                 razorpay_signature: 'sandbox_verified',
-                customerName: formData.name,
-                customerPhone: formData.phone,
-                customerEmail: formData.email,
+                customerName: verifiedName,
+                customerPhone: fullPhone,
+                customerEmail: verifiedEmail,
                 eventType: formData.event,
                 quantity: quantity,
                 amountPaid: totalAmount,
@@ -115,6 +180,16 @@ export default function BookingDrawer({
             const verifyData = await verifyRes.json()
 
             if (verifyData.success && verifyData.ticket) {
+              // Trigger Meta Pixel Purchase Event
+              if (typeof window !== 'undefined' && window.fbq) {
+                window.fbq('track', 'Purchase', {
+                  value: totalAmount,
+                  currency: 'INR',
+                  content_name: selectedPkg?.title || formData.event,
+                  content_type: 'event_ticket',
+                  num_items: quantity,
+                })
+              }
               onClose()
               if (onTicketGenerated) onTicketGenerated(verifyData.ticket)
             } else {
@@ -145,11 +220,11 @@ export default function BookingDrawer({
         image: '/logo.jpeg',
         order_id: orderData.orderId,
         prefill: {
-          name: formData.name,
-          email: formData.email,
-          contact: formData.phone,
+          name: verifiedName,
+          email: verifiedEmail,
+          contact: fullPhone,
         },
-        theme: { color: '#ff35c4' },
+        theme: { color: '#0c83eb' },
         handler: async function (response) {
           setLoading(true)
           try {
@@ -161,9 +236,9 @@ export default function BookingDrawer({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                customerName: formData.name,
-                customerPhone: formData.phone,
-                customerEmail: formData.email,
+                customerName: verifiedName,
+                customerPhone: fullPhone,
+                customerEmail: verifiedEmail,
                 eventType: formData.event,
                 quantity: quantity,
                 amountPaid: totalAmount,
@@ -172,6 +247,16 @@ export default function BookingDrawer({
             const verifyData = await verifyRes.json()
 
             if (verifyData.success && verifyData.ticket) {
+              // Trigger Meta Pixel Purchase Event
+              if (typeof window !== 'undefined' && window.fbq) {
+                window.fbq('track', 'Purchase', {
+                  value: totalAmount,
+                  currency: 'INR',
+                  content_name: selectedPkg?.title || formData.event,
+                  content_type: 'event_ticket',
+                  num_items: quantity,
+                })
+              }
               onClose()
               if (onTicketGenerated) onTicketGenerated(verifyData.ticket)
             } else {
@@ -212,20 +297,20 @@ export default function BookingDrawer({
 
       {/* Slide-over Drawer Panel - Generous 600px Width, Human-Crafted Aesthetic */}
       <div className="relative z-10 w-full max-w-xl sm:max-w-2xl h-full bg-[#0c0717] border-l border-white/15 shadow-[0_0_80px_rgba(0,0,0,0.95)] flex flex-col justify-between overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-300">
-        {/* Top Header - Clean, Sleek, Professional */}
-        <div className="px-6 sm:px-8 py-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0c0717]/95 backdrop-blur-xl z-20">
-          <div className="flex items-center gap-3.5">
+        {/* Top Header - Compact, Sleek, Professional */}
+        <div className="px-5 sm:px-7 py-3 sm:py-3.5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#0c0717]/95 backdrop-blur-xl z-20">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <img
               src="/logo.jpeg"
               alt="VIBE Shillong"
-              className="w-10 h-10 object-contain mix-blend-screen shrink-0"
+              className="w-8 h-8 object-contain mix-blend-screen shrink-0"
             />
-            <div>
-              <h2 className="font-bold font-space text-lg sm:text-xl text-white tracking-wide leading-tight">
+            <div className="min-w-0">
+              <h2 className="font-bold font-space text-sm sm:text-base text-white tracking-wide leading-tight truncate">
                 Book Festival Passes
               </h2>
-              <p className="text-xs text-white/50 mt-0.5">
-                Saturday, 12 December 2026 · F Lounge by FTV
+              <p className="text-[11px] text-white/50 leading-tight truncate">
+                Sat, 12 Dec 2026 · F Lounge by FTV
               </p>
             </div>
           </div>
@@ -234,9 +319,9 @@ export default function BookingDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close drawer"
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-white/60 hover:text-white grid place-items-center transition-colors cursor-pointer border border-white/10"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/5 hover:bg-white/15 text-white/60 hover:text-white grid place-items-center transition-colors cursor-pointer border border-white/10 shrink-0 ml-3"
           >
-            <X size={16} />
+            <X size={14} />
           </button>
         </div>
 
@@ -244,11 +329,11 @@ export default function BookingDrawer({
         <form onSubmit={handleSubmit} className="px-6 sm:px-8 py-6 space-y-6 flex-1">
           {/* Section 1: Choose Pass Tier (Visual Interactive Cards) */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-xs uppercase font-bold tracking-wider text-white/80">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <label className="text-xs uppercase font-bold tracking-wider text-white/80 whitespace-nowrap">
                 1. Select Pass Tier
               </label>
-              <span className="text-xs text-white/40">Choose your festival session</span>
+              <span className="text-[11px] text-white/40 hidden sm:inline truncate">Choose festival session</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -361,26 +446,29 @@ export default function BookingDrawer({
             </div>
           </div>
 
-          {/* Section 3: Attendee Details */}
+          {/* Section 2: Attendee Details */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="text-xs uppercase font-bold tracking-wider text-white/80">
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-xs uppercase font-bold tracking-wider text-white/80 whitespace-nowrap">
                 2. Attendee Information
               </label>
-              <span className="text-xs text-white/40">E-Pass will be sent to this email</span>
+              <span className="text-[11px] text-white/40 hidden sm:inline truncate">E-Pass delivered via email</span>
             </div>
 
             {/* Full Name */}
             <div>
               <label className="text-xs font-semibold text-white/70 block mb-1.5">
-                Full Name
+                Full Name <span className="text-rose-500 font-bold">*</span>
               </label>
               <input
                 required
                 type="text"
                 placeholder="Enter attendee full name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value })
+                  if (errorMessage) setErrorMessage('')
+                }}
                 className="w-full h-12 px-4 rounded-xl bg-white/[0.04] border border-white/15 text-white text-sm focus:outline-none focus:border-neon-pink focus:bg-white/[0.07] transition-all"
               />
             </div>
@@ -389,47 +477,112 @@ export default function BookingDrawer({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-white/70 block mb-1.5">
-                  WhatsApp / Phone Number
+                  WhatsApp / Phone Number <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <input
-                  required
-                  type="tel"
-                  placeholder="+91 98765 43210"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl bg-white/[0.04] border border-white/15 text-white text-sm focus:outline-none focus:border-neon-pink focus:bg-white/[0.07] transition-all"
-                />
+
+                <div className="relative flex items-center">
+                  <span className="absolute left-0 top-0 bottom-0 px-3 flex items-center justify-center bg-white/[0.06] border-r border-white/15 text-xs font-mono font-bold text-white/80 rounded-l-xl select-none pointer-events-none">
+                    +91
+                  </span>
+                  <input
+                    required
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="98765 43210"
+                    value={formData.phone}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      setFormData({ ...formData, phone: clean })
+                      if (errorMessage) setErrorMessage('')
+                    }}
+                    className="w-full h-12 pl-14 pr-4 rounded-xl bg-white/[0.04] border border-white/15 text-white text-sm font-mono tracking-wider focus:outline-none focus:border-neon-pink focus:bg-white/[0.07] transition-all"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-white/70 block mb-1.5">
-                  Email Address
-                </label>
-                <input
-                  required
-                  type="email"
-                  placeholder="name@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl bg-white/[0.04] border border-white/15 text-white text-sm focus:outline-none focus:border-neon-pink focus:bg-white/[0.07] transition-all"
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-white/70">
+                    Email Address <span className="text-rose-500 font-bold">*</span>
+                  </label>
+                  {user ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
+                        <GoogleIcon size={11} className="shrink-0" /> Verified
+                      </span>
+                      <button
+                        type="button"
+                        onClick={loginWithGoogle}
+                        className="text-[10px] text-white/40 hover:text-white underline cursor-pointer"
+                        title="Switch Google Account"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-rose-400 font-medium">Google Required</span>
+                  )}
+                </div>
+
+                {user ? (
+                  <div className="relative">
+                    <input
+                      required
+                      readOnly
+                      type="email"
+                      value={user.email}
+                      className="w-full h-12 pl-3.5 pr-8 rounded-xl bg-black/50 border border-white/15 text-white/90 text-xs sm:text-sm cursor-not-allowed select-none focus:outline-none truncate"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-400">
+                      <Lock size={14} />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage('')
+                      loginWithGoogle()
+                    }}
+                    className="w-full h-12 px-3 rounded-xl border border-white/20 bg-white/[0.05] hover:bg-white/[0.09] active:scale-[0.99] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <GoogleIcon size={16} className="shrink-0" />
+                    <span className="truncate">Sign in with Google to Verify</span>
+                  </button>
+                )}
+                <span className="text-[10px] text-white/40 block mt-1 leading-tight">
+                  {user
+                    ? 'Verified via Google'
+                    : 'Your E-Pass will be delivered to this verified email'}
+                </span>
               </div>
             </div>
           </div>
 
           {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
-              <AlertCircle size={16} className="shrink-0 text-rose-400" />
-              <span>{errorMessage}</span>
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertCircle size={16} className="shrink-0 text-rose-400" />
+                <span className="leading-snug">{errorMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setErrorMessage('')}
+                className="text-rose-400 hover:text-white p-1 rounded-md transition-colors cursor-pointer shrink-0"
+                title="Dismiss"
+              >
+                <X size={14} />
+              </button>
             </div>
           )}
 
-          {/* Section 4: Primary Checkout Action */}
-          <div className="pt-2">
+          {/* Section 4: Primary Checkout Action & Trust Badge */}
+          <div className="pt-2 space-y-2">
             <button
               type="submit"
               disabled={loading || selectedPkg.soldOut}
-              className="w-full h-14 rounded-2xl bg-neon-pink text-[#080612] font-extrabold text-sm uppercase tracking-wider hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer shadow-[0_0_35px_rgba(255,53,196,0.45)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full h-13 sm:h-14 rounded-2xl bg-[#0c83eb] hover:bg-[#0a74d4] text-white font-extrabold text-sm uppercase tracking-wider active:scale-[0.99] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 px-4 shadow-[0_4px_16px_rgba(12,131,235,0.25)]"
             >
               {loading ? (
                 'Securing Payment...'
@@ -437,21 +590,29 @@ export default function BookingDrawer({
                 'This Pass Tier is Sold Out'
               ) : (
                 <>
-                  <Lock size={16} /> Proceed to Pay ₹{totalAmount.toLocaleString('en-IN')} via Razorpay
+                  <Lock size={16} className="shrink-0" />
+                  <span>Proceed to Pay ₹{totalAmount.toLocaleString('en-IN')}</span>
                 </>
               )}
             </button>
-          </div>
 
-          {/* Trust Badges */}
-          <div className="flex items-center justify-center gap-5 text-xs text-white/50 pt-2 pb-1">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck size={14} className="text-emerald-400" /> Official 256-Bit SSL Checkout
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1.5">
-              <Sparkles size={14} className="text-neon-cyan" /> Instant QR E-Pass Delivery
-            </span>
+            {/* Secured by Razorpay */}
+            <div className="flex items-center justify-center gap-1.5 pt-0.5 text-xs text-white/50 select-none">
+              <span>Secured by</span>
+              <span className="inline-flex items-center gap-1">
+                <svg
+                  role="img"
+                  viewBox="0 0 24 24"
+                  className="w-3.5 h-3.5 fill-[#0C83EB] shrink-0"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M22.436 0l-11.91 7.773-1.174 4.276 6.625-4.297L11.65 24h4.391l6.395-24zM14.26 10.098L3.389 17.166 1.564 24h9.008l3.688-13.902Z" />
+                </svg>
+                <span className="font-sans font-semibold tracking-tight text-xs text-white/90">
+                  Razorpay
+                </span>
+              </span>
+            </div>
           </div>
         </form>
       </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mail, Phone, MapPin, CalendarDays, Send, CheckCircle2, MessageSquare, Clock } from 'lucide-react'
+import { Mail, Phone, Send, CheckCircle2 } from 'lucide-react'
 import { API_BASE_URL } from '../config/api'
 
 export default function ContactSection() {
@@ -43,7 +43,7 @@ export default function ContactSection() {
   }
 
   return (
-    <section className="py-24 max-w-6xl mx-auto px-6 relative" id="contact">
+    <section className="py-24 max-w-6xl mx-auto px-6 relative scroll-mt-28" id="contact">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
         {/* Left Column: Event Contact Details & Info */}
         <div className="lg:col-span-6 space-y-6">
@@ -58,53 +58,40 @@ export default function ContactSection() {
             </h2>
           </div>
 
-          <p className="text-neon-muted text-sm sm:text-base leading-relaxed max-w-md">
+          <p className="text-neon-muted text-sm sm:text-base leading-relaxed">
             Need VIP table reservations, group bookings, brand sponsorship, or festival assistance? Our concierge team is here to assist you.
           </p>
 
           {/* Quick Contact Info Cards */}
-          <div className="space-y-3.5 pt-2 max-w-md">
-            {/* Phone & WhatsApp */}
+          <div className="space-y-3.5 pt-2">
+            {/* Phone & WhatsApp Support */}
             <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-neon-cyan/40 transition-colors">
               <div className="w-11 h-11 rounded-xl bg-neon-cyan/15 border border-neon-cyan/30 text-neon-cyan grid place-items-center shrink-0">
                 <Phone size={18} />
               </div>
               <div>
                 <span className="text-[10px] uppercase font-bold text-white/40 block">Phone & WhatsApp Support</span>
-                <a href="tel:+918223087569" className="text-sm font-bold text-white hover:text-neon-cyan transition-colors">
-                  +91 82230 87569
+                <a
+                  href="tel:+918731846927"
+                  className="text-sm sm:text-base font-bold text-white hover:text-neon-cyan transition-colors"
+                >
+                  +91 87318 46927
                 </a>
               </div>
             </div>
 
-            {/* Email Support */}
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-neon-pink/40 transition-colors">
-              <div className="w-11 h-11 rounded-xl bg-neon-pink/15 border border-neon-pink/30 text-neon-pink grid place-items-center shrink-0">
-                <Mail size={18} />
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-white/40 block">Email Inquiries</span>
-                <a href="mailto:support@VIBEshillong.com" className="text-sm font-bold text-white hover:text-neon-pink transition-colors">
-                  support@VIBEshillong.com
-                </a>
-              </div>
-            </div>
-
-            {/* Venue & Date */}
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-neon-lime/40 transition-colors">
-              <div className="w-11 h-11 rounded-xl bg-neon-lime/15 border border-neon-lime/30 text-neon-lime grid place-items-center shrink-0">
-                <MapPin size={18} />
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-white/40 block">Festival Venue</span>
-                <span className="text-sm font-bold text-white block">F Lounge by FTV</span>
-                <span className="text-xs text-white/50">Saturday, 12 December 2026</span>
-              </div>
+            {/* Direct Email Link */}
+            <div className="flex items-center gap-2 pt-1 px-1 text-xs text-white/50">
+              <Mail size={13} className="text-neon-pink shrink-0" />
+              <span>Direct Email:</span>
+              <a href="mailto:vibeshillong@gmail.com" className="text-white hover:text-neon-pink font-semibold underline decoration-white/30 transition-colors">
+                vibeshillong@gmail.com
+              </a>
             </div>
           </div>
 
           {/* Party Atmospheric Visual */}
-          <div className="h-44 sm:h-52 overflow-hidden rounded-2xl border border-white/10 shadow-2xl relative max-w-md">
+          <div className="h-44 sm:h-52 overflow-hidden rounded-2xl border border-white/10 shadow-2xl relative">
             <img
               src="/images/tina/Neon Nightclub Dancefloor Spectacle.png"
               alt="VIBE Shillong Celebration"

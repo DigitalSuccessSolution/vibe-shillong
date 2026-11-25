@@ -46,7 +46,6 @@ export function generateTicketEmailHtml(ticket) {
   const timingText = eventTimings[eventTypeKey] || '8:00 PM Onwards'
 
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticketId)}&color=080414&bgcolor=ffffff`
-  const downloadUrl = `https://vibeshillong.com/?ticket=${encodeURIComponent(ticketId)}&download=true`
 
   return `
 <!DOCTYPE html>
@@ -87,12 +86,6 @@ export function generateTicketEmailHtml(ticket) {
       }
       .attendee-name {
         font-size: 20px !important;
-      }
-      .download-btn {
-        width: 90% !important;
-        box-sizing: border-box !important;
-        padding: 14px 16px !important;
-        font-size: 13px !important;
       }
     }
   </style>
@@ -251,22 +244,6 @@ export function generateTicketEmailHtml(ticket) {
         </table>
 
         <!-- ======================================================== -->
-        <!-- 1-CLICK DOWNLOAD / SAVE TICKET PASS BUTTON -->
-        <!-- ======================================================== -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 18px; text-align: center;">
-          <tr>
-            <td align="center">
-              <a href="${downloadUrl}" target="_blank" class="download-btn" style="display: inline-block; background-color: ${theme.badgeBg}; color: ${theme.badgeText}; text-decoration: none; font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; padding: 13px 32px; border-radius: 12px; box-shadow: 0 4px 20px ${theme.glow};">
-                ⬇️ DOWNLOAD / SAVE TICKET (PNG)
-              </a>
-              <div style="margin-top: 8px; font-size: 11px; color: #8f85a3;">
-                Opens your high-res digital ticket with 1-click PNG download & print
-              </div>
-            </td>
-          </tr>
-        </table>
-
-        <!-- ======================================================== -->
         <!-- ENTRY INSTRUCTIONS & VENUE GUIDELINES -->
         <!-- ======================================================== -->
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 16px; background-color: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 14px 18px; font-size: 11px; line-height: 1.6; color: #a59cb8;">
@@ -283,7 +260,7 @@ export function generateTicketEmailHtml(ticket) {
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 14px; text-align: center; font-size: 10px; color: #625977; line-height: 1.6;">
           <tr>
             <td>
-              Need assistance? WhatsApp <strong>+91 82230 87569</strong> or email support@vibeshillong.com
+              Need assistance? WhatsApp <strong>+91 87318 46927</strong> or email vibeshillong@gmail.com
               <br>
               © 2026 VIBE Shillong. All rights reserved. F Lounge by FTV, Shillong.
             </td>

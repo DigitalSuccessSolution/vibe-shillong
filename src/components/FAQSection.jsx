@@ -6,7 +6,7 @@ export default function FAQSection() {
   const [openIndex, setOpenIndex] = useState(0)
 
   return (
-    <section className="py-24 max-w-6xl mx-auto px-6" id="faq">
+    <section className="py-24 max-w-6xl mx-auto px-6 scroll-mt-28" id="faq">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Left: Heading & Photo */}
         <div className="lg:col-span-5">

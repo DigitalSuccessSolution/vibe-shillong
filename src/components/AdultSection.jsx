@@ -44,7 +44,7 @@ export default function AdultSection({ packages = [], onNavigateToDetail }) {
   }
 
   return (
-    <section className="py-14 sm:py-16 max-w-6xl mx-auto px-6 relative" id="adult">
+    <section className="py-14 sm:py-16 max-w-6xl mx-auto px-6 relative scroll-mt-28" id="adult">
       {/* Section Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-3 mb-6">
         <div>

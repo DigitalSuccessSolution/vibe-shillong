@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { CalendarDays, Download, MapPin, X, ShieldCheck, Clock, Ticket as TicketIcon, Loader2 } from 'lucide-react'
+import { CalendarDays, Download, MapPin, X, ShieldCheck, Clock, Ticket as TicketIcon, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 
 export default function TicketModal({ isOpen, onClose, ticket, autoDownload = false }) {
@@ -21,13 +21,54 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
     if (!ticketRef.current) return
     setDownloading(true)
     try {
-      const html2canvasModule = await import('html2canvas')
-      const html2canvas = html2canvasModule.default || html2canvasModule
+      let html2canvas
+      try {
+        const proModule = await import('html2canvas-pro')
+        html2canvas = proModule.default || proModule
+      } catch {
+        const standardModule = await import('html2canvas')
+        html2canvas = standardModule.default || standardModule
+      }
+
       const canvas = await html2canvas(ticketRef.current, {
-        backgroundColor: '#070311',
+        backgroundColor: '#0d071a',
         scale: 2,
         useCORS: true,
         logging: false,
+        onclone: (clonedDoc) => {
+          // Flatten outer corners on exported PNG so no black corner triangles exist
+          const printable = clonedDoc.getElementById('printable-ticket')
+          if (printable) {
+            printable.style.borderRadius = '0px'
+            printable.style.boxShadow = 'none'
+            if (printable.firstElementChild) {
+              printable.firstElementChild.style.borderRadius = '0px'
+            }
+          }
+
+          // Double safety net: convert any unsupported color functions to standard rgb/rgba
+          try {
+            const helperCanvas = document.createElement('canvas')
+            const ctx = helperCanvas.getContext('2d')
+            if (ctx) {
+              const elements = clonedDoc.querySelectorAll('*')
+              elements.forEach((el) => {
+                const computed = window.getComputedStyle(el)
+                const props = ['color', 'backgroundColor', 'borderColor', 'outlineColor', 'fill', 'stroke']
+                props.forEach((prop) => {
+                  const val = computed[prop]
+                  if (val && (val.includes('oklab') || val.includes('oklch') || val.includes('color('))) {
+                    try {
+                      ctx.fillStyle = '#ffffff'
+                      ctx.fillStyle = val
+                      el.style[prop] = ctx.fillStyle
+                    } catch {}
+                  }
+                })
+              })
+            }
+          } catch {}
+        },
       })
       const link = document.createElement('a')
       link.download = `VIBE-Ticket-${ticket.ticketId || 'Pass'}.png`
@@ -70,6 +111,10 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
   const customerNameDisplay = ticket.customerName || 'Verified Attendee'
   const quantity = Number(ticket.quantity) || 1
 
+  const rawStatus = (ticket.status || 'VALID').toUpperCase()
+  const isCancelled = rawStatus.includes('CANCEL') || rawStatus === 'VOID'
+  const isUsed = rawStatus === 'USED'
+
   const eventTimings = {
     kids: '12:00 PM – 7:30 PM',
     adult: '8:00 PM Onwards',
@@ -93,13 +138,7 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
         <div
           ref={ticketRef}
           id="printable-ticket"
-          style={{
-            WebkitMask:
-              'radial-gradient(15px at 66.666% 0, transparent 15px, black 15.5px) top / 100% 51% no-repeat, radial-gradient(15px at 66.666% 100%, transparent 15px, black 15.5px) bottom / 100% 51% no-repeat',
-            mask:
-              'radial-gradient(15px at 66.666% 0, transparent 15px, black 15.5px) top / 100% 51% no-repeat, radial-gradient(15px at 66.666% 100%, transparent 15px, black 15.5px) bottom / 100% 51% no-repeat',
-          }}
-          className={`relative bg-[#0d071a] border-2 ${currentTheme.border} ${currentTheme.glow} rounded-3xl text-white shadow-2xl`}
+          className={`relative bg-[#0d071a] border-2 ${currentTheme.border} ${currentTheme.glow} rounded-3xl text-white shadow-2xl overflow-hidden`}
         >
           {/* Decorative Subtle Background Glow (Clipped inside) */}
           <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
@@ -175,10 +214,22 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
 
               {/* Status Badge & Barcode Strip */}
               <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
-                  <ShieldCheck size={13} />
-                  Status: {ticket.status || 'VALID'}
-                </span>
+                {isCancelled ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 text-[11px] font-bold">
+                    <XCircle size={13} />
+                    Status: CANCELLED
+                  </span>
+                ) : isUsed ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+                    <CheckCircle2 size={13} />
+                    Status: USED (CHECKED-IN)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold">
+                    <ShieldCheck size={13} />
+                    Status: VALID
+                  </span>
+                )}
                 <span className="font-mono text-xs text-white/30 tracking-[4px] uppercase select-none hidden sm:inline">
                   |||||||||||||||||||
                 </span>
@@ -186,91 +237,33 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
             </div>
 
             {/* ========================================================= */}
-            {/* PERFORATED DIVIDER & INWARD CURVING BORDER NOTCHES */}
+            {/* RIGHT / STUB SECTION (4 Columns on desktop, stacked on mobile) */}
             {/* ========================================================= */}
-            {/* Top Cutout Notch with Inward Curving Border (Desktop) */}
-            <svg
-              className="hidden md:block absolute -top-[2px] left-[66.666%] -translate-x-1/2 z-30 pointer-events-none"
-              width="32"
-              height="18"
-              viewBox="0 0 32 18"
-            >
-              <path
-                d="M 1,2 A 15,15 0 0,0 31,2"
-                fill="none"
-                stroke={currentTheme.accent}
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-
-            {/* Bottom Cutout Notch with Inward Curving Border (Desktop) */}
-            <svg
-              className="hidden md:block absolute -bottom-[2px] left-[66.666%] -translate-x-1/2 z-30 pointer-events-none"
-              width="32"
-              height="18"
-              viewBox="0 0 32 18"
-            >
-              <path
-                d="M 1,16 A 15,15 0 0,1 31,16"
-                fill="none"
-                stroke={currentTheme.accent}
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-
-            {/* Left Cutout Notch with Inward Curving Border (Mobile) */}
-            <svg
-              className="md:hidden absolute top-[68%] -left-[2px] -translate-y-1/2 z-30 pointer-events-none"
-              width="18"
-              height="32"
-              viewBox="0 0 18 32"
-            >
-              <path
-                d="M 2,1 A 15,15 0 0,1 2,31"
-                fill="none"
-                stroke={currentTheme.accent}
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-
-            {/* Right Cutout Notch with Inward Curving Border (Mobile) */}
-            <svg
-              className="md:hidden absolute top-[68%] -right-[2px] -translate-y-1/2 z-30 pointer-events-none"
-              width="18"
-              height="32"
-              viewBox="0 0 18 32"
-            >
-              <path
-                d="M 16,1 A 15,15 0 0,0 16,31"
-                fill="none"
-                stroke={currentTheme.accent}
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-
-            {/* ========================================================= */}
-            {/* RIGHT / STUB SECTION (4 Columns on desktop) */}
-            {/* ========================================================= */}
-            <div className="md:col-span-4 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-white/15 bg-black/40 p-6 flex flex-col items-center justify-between text-center">
+            <div className="md:col-span-4 border-t-2 md:border-t-0 md:border-l-2 border-dashed border-white/20 bg-black/40 p-6 flex flex-col items-center justify-between text-center">
               <div className="w-full">
                 <span className="text-[10px] font-mono tracking-widest text-white/40 uppercase block mb-3 font-semibold">
                   Digital Entry Stub
                 </span>
 
                 {/* QR Code Container */}
-                <div className="p-3 bg-white rounded-2xl shadow-xl inline-block mx-auto">
-                  <QRCodeSVG
-                    value={ticketIdDisplay}
-                    size={135}
-                    level="H"
-                    includeMargin={false}
-                  />
-                  <span className="text-[9px] text-black/80 font-mono font-bold mt-1.5 block tracking-wider uppercase">
-                    Scan for Entry
+                <div className={`p-3 rounded-2xl shadow-xl inline-block mx-auto relative ${isCancelled ? 'bg-[#1a0b16] border border-rose-500/40' : 'bg-white'}`}>
+                  <div className={isCancelled ? 'opacity-25 blur-[1px]' : ''}>
+                    <QRCodeSVG
+                      value={ticketIdDisplay}
+                      size={135}
+                      level="H"
+                      includeMargin={false}
+                    />
+                  </div>
+                  {isCancelled && (
+                    <div className="absolute inset-0 flex items-center justify-center p-2">
+                      <span className="px-2.5 py-1 rounded bg-rose-600 text-white font-black font-space text-[10px] sm:text-[11px] tracking-wider uppercase rotate-[-12deg] shadow-2xl border border-white/50">
+                        VOID / CANCELLED
+                      </span>
+                    </div>
+                  )}
+                  <span className={`text-[9px] font-mono font-bold mt-1.5 block tracking-wider uppercase ${isCancelled ? 'text-rose-400' : 'text-black/80'}`}>
+                    {isCancelled ? 'Pass Void & Cancelled' : 'Scan for Entry'}
                   </span>
                 </div>
               </div>
@@ -304,7 +297,7 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
               </>
             ) : (
               <>
-                <Download size={14} /> Download Ticket (PNG)
+                <Download size={14} /> Download Ticket
               </>
             )}
           </button>

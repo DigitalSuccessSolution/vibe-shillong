@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Search, Download, CheckCircle2, Copy, Check, RefreshCw, Plus, XCircle, AlertTriangle } from 'lucide-react'
+import { Search, Download, CheckCircle2, Copy, Check, RefreshCw, Plus, XCircle, AlertTriangle, X, ChevronDown } from 'lucide-react'
+import Pagination from '../../components/admin/Pagination'
+import DateFilter, { matchesDateFilter } from '../../components/admin/DateFilter'
+import { useDebounce } from '../../hooks/useDebounce'
 import { API_BASE_URL } from '../../config/api'
 
 export default function TransactionsPage({ ticketsList: propTickets = [] }) {
@@ -13,10 +16,18 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'SUCCESS' | 'FAILED' | 'REFUNDED'
   const [passFilter, setPassFilter] = useState('all')
+  const [datePreset, setDatePreset] = useState('all')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [selectedTx, setSelectedTx] = useState(null)
   const [copiedId, setCopiedId] = useState('')
+
+  // 300ms Search Debounce
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
 
   // Modal: Add / Record Counter Payment
   const [isAddingOffline, setIsAddingOffline] = useState(false)
@@ -93,7 +104,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
   const filteredTransactions = transactionsList.filter((t) => {
     const matchesPass = passFilter === 'all' ? true : t.eventType === passFilter
     const matchesStatus = statusFilter === 'all' ? true : t.status === statusFilter
-    const q = searchQuery.toLowerCase().trim()
+    const q = debouncedSearchQuery.toLowerCase().trim()
     const matchesSearch =
       !q ||
       (t.transactionId || '').toLowerCase().includes(q) ||
@@ -102,9 +113,21 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
       (t.customerName || '').toLowerCase().includes(q) ||
       (t.customerPhone || '').includes(q) ||
       (t.customerEmail || '').toLowerCase().includes(q)
+    const matchesDate = matchesDateFilter(t.createdAt, datePreset, startDate, endDate)
 
-    return matchesPass && matchesStatus && matchesSearch
+    return matchesPass && matchesStatus && matchesSearch && matchesDate
   })
+
+  // Reset to page 1 on filter, search, date range, or page size change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearchQuery, statusFilter, passFilter, pageSize, datePreset, startDate, endDate])
+
+  // Paginated slice
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
 
   // Format Date and Time
   const formatDateTime = (dateString) => {
@@ -233,7 +256,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
       'Failure / Refund Note',
     ]
 
-    const rows = transactionsList.map((t) => {
+    const rows = filteredTransactions.map((t) => {
       const dt = formatDateTime(t.createdAt)
       return [
         dt.date,
@@ -271,7 +294,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
       {/* 4 Live Metric Cards from MongoDB Transaction Model */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Revenue */}
-        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5">
           <span className="text-[10px] text-white/50 uppercase tracking-wider font-bold block mb-1">
             Total Revenue Collected
           </span>
@@ -282,7 +305,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
         </div>
 
         {/* Paid Orders */}
-        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5">
           <span className="text-[10px] text-white/50 uppercase tracking-wider font-bold block mb-1">
             Paid Successful Orders
           </span>
@@ -293,7 +316,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
         </div>
 
         {/* Refunded */}
-        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5">
           <span className="text-[10px] text-amber-400/80 uppercase tracking-wider font-bold block mb-1">
             Total Refunded
           </span>
@@ -304,7 +327,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
         </div>
 
         {/* Failed Attempts */}
-        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5 shadow-lg">
+        <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-5">
           <span className="text-[10px] text-red-400/80 uppercase tracking-wider font-bold block mb-1">
             Failed Gateway Attempts
           </span>
@@ -316,94 +339,89 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
       </div>
 
       {/* Main Ledger Card */}
-      <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+      <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6">
         {/* Header & Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-5">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-white/10 pb-4">
           <div>
-            <h3 className="font-bold font-space text-xl text-white">Payment Transactions & Orders</h3>
+            <h3 className="font-bold font-space text-lg text-white">Payment Transactions & Orders</h3>
             <p className="text-xs text-white/50 mt-0.5">
               Dedicated MongoDB Transaction Model • {transactionsList.length} total transaction records
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Search */}
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40" />
               <input
                 type="text"
-                placeholder="Search Transaction ID, Order, Name, Phone..."
+                placeholder="Search ID, Order, Name, Phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-black/50 border border-white/15 rounded-xl text-xs text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan w-56 sm:w-64"
+                className="h-9 w-44 sm:w-56 pl-8 pr-7 bg-black/50 border border-white/15 rounded-lg text-xs text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan transition-all"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer"
+                  title="Clear search"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </div>
 
-            {/* Status Filter */}
-            <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10 text-xs">
-              <button
-                type="button"
-                onClick={() => setStatusFilter('all')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  statusFilter === 'all' ? 'bg-white/20 text-white' : 'text-white/60 hover:text-white'
-                }`}
+            {/* Compact Status Filter Dropdown */}
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-9 appearance-none pl-3 pr-7 bg-black/60 border border-white/15 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-neon-cyan cursor-pointer hover:bg-white/5 transition-all"
               >
-                All Status
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('SUCCESS')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  statusFilter === 'SUCCESS' ? 'bg-emerald-500/30 text-emerald-300' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                Paid
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('REFUNDED')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  statusFilter === 'REFUNDED' ? 'bg-amber-500/30 text-amber-300' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                Refunded
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter('FAILED')}
-                className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  statusFilter === 'FAILED' ? 'bg-red-500/30 text-red-300' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                Failed
-              </button>
+                <option value="all" className="bg-[#0f091f] text-white">All Status</option>
+                <option value="SUCCESS" className="bg-[#0f091f] text-emerald-300">Paid</option>
+                <option value="REFUNDED" className="bg-[#0f091f] text-amber-300">Refunded</option>
+                <option value="FAILED" className="bg-[#0f091f] text-red-300">Failed</option>
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
             </div>
+
+            {/* Date Filter */}
+            <DateFilter
+              datePreset={datePreset}
+              setDatePreset={setDatePreset}
+              startDate={startDate}
+              setStartDate={setStartDate}
+              endDate={endDate}
+              setEndDate={setEndDate}
+            />
 
             {/* Refresh Live Data */}
             <button
               type="button"
               onClick={fetchLiveTransactions}
               disabled={loading}
-              className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/15 text-white/80 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/10"
+              className="h-9 w-9 rounded-lg bg-white/5 hover:bg-white/15 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer border border-white/10 shrink-0"
               title="Refresh live data from database"
             >
-              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+              <RefreshCw size={13} className={loading ? 'animate-spin text-neon-cyan' : ''} />
             </button>
 
             {/* Record Counter Payment Button */}
             <button
               type="button"
               onClick={() => setIsAddingOffline(true)}
-              className="px-3.5 py-2 rounded-xl bg-neon-pink text-[#080612] font-bold text-xs uppercase tracking-wider hover:opacity-90 flex items-center gap-1 transition-all cursor-pointer"
+              className="h-9 px-3 rounded-lg bg-neon-pink text-[#080612] font-bold text-xs uppercase tracking-wider hover:opacity-90 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
-              <Plus size={14} /> Record Counter Sale
+              <Plus size={13} /> Record Counter Sale
             </button>
 
             {/* Export CSV Button */}
             <button
               type="button"
               onClick={handleExportCSV}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/10"
+              className="h-9 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/10 whitespace-nowrap shrink-0"
               title="Download full transaction spreadsheet"
             >
               <Download size={13} /> Export CSV
@@ -433,7 +451,7 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((tx) => {
+                paginatedTransactions.map((tx) => {
                   const dt = formatDateTime(tx.createdAt)
                   const paymentDisplay = tx.transactionId || tx.paymentId || 'TX_DIRECT'
 
@@ -565,6 +583,18 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {filteredTransactions.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredTransactions.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50, 100]}
+          />
+        )}
       </div>
 
       {/* MODAL: Record Counter Payment / Ticket */}

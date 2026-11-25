@@ -14,6 +14,56 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'sample_secret',
 })
 
+/**
+ * 0. Secure Admin & Staff Gate Scanner Login
+ * POST /api/tickets/admin-login
+ */
+router.post('/admin-login', (req, res) => {
+  try {
+    const { username, password } = req.body || {}
+    const cleanUser = (username || '').trim()
+    const cleanPass = (password || '').trim()
+
+    const validUser = (process.env.ADMIN_USER || 'admin').trim()
+    const validPass = (process.env.ADMIN_PASS || 'neon@2026').trim()
+
+    if (!cleanUser || !cleanPass) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username and password are required',
+      })
+    }
+
+    if (cleanUser === validUser && cleanPass === validPass) {
+      // Secure HMAC session token
+      const sessionToken = crypto
+        .createHmac('sha256', validPass)
+        .update(`${cleanUser}_${Date.now()}_${Math.random()}`)
+        .digest('hex')
+
+      return res.json({
+        success: true,
+        message: 'Admin authentication successful',
+        token: sessionToken,
+        user: {
+          username: cleanUser,
+          role: 'Gate Supervisor / Organizer',
+        },
+      })
+    }
+
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid Username or Password.',
+    })
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Authentication server error: ' + err.message,
+    })
+  }
+})
+
 // Guard: Check if MongoDB is ready (prevents 10000ms buffering timeouts)
 router.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
@@ -548,6 +598,33 @@ router.post('/webhook', async (req, res) => {
 })
 
 /**
+ * 1.5 Get My Tickets by Customer Email (for logged-in Google users)
+ * GET /api/tickets/my-tickets?email=...
+ */
+router.get('/my-tickets', async (req, res) => {
+  try {
+    const rawEmail = (req.query.email || '').trim()
+    if (!rawEmail) {
+      return res.status(400).json({ success: false, message: 'Email query parameter is required' })
+    }
+    const cleanEmail = rawEmail.toLowerCase()
+    const escapedEmail = cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const tickets = await Ticket.find({
+      customerEmail: { $regex: new RegExp(`^${escapedEmail}$`, 'i') },
+    }).sort({ createdAt: -1 })
+
+    return res.json({
+      success: true,
+      count: tickets.length,
+      tickets,
+    })
+  } catch (error) {
+    console.error('Error fetching user tickets:', error)
+    return res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+/**
  * 2. Get Ticket Details by ID
  * GET /api/tickets/:ticketId
  */
@@ -673,7 +750,8 @@ router.post('/scan', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    const tickets = await Ticket.find().sort({ createdAt: -1 }).limit(100)
+    const limit = parseInt(req.query.limit) || 1000
+    const tickets = await Ticket.find().sort({ createdAt: -1 }).limit(limit)
     return res.json({ success: true, count: tickets.length, tickets })
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message })

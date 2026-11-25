@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ArrowRight, CalendarDays, Check, ChevronDown, MapPin, Phone, QrCode } from 'lucide-react'
 import { API_BASE_URL } from '../config/api'
 import { DEFAULT_PACKAGES } from '../constants/packages'
+import { RazorpayBadge } from './BookingDrawer'
 
 export default function BookingSection({ onTicketGenerated }) {
   const [loading, setLoading] = useState(false)
@@ -94,6 +95,15 @@ export default function BookingSection({ onTicketGenerated }) {
             const verifyData = await verifyRes.json()
 
             if (verifyData.success && verifyData.ticket) {
+              if (typeof window !== 'undefined' && window.fbq) {
+                window.fbq('track', 'Purchase', {
+                  value: totalAmount,
+                  currency: 'INR',
+                  content_name: pkgTitle || eventKey,
+                  content_type: 'event_ticket',
+                  num_items: formData.quantity,
+                })
+              }
               if (onTicketGenerated) onTicketGenerated(verifyData.ticket)
             } else {
               setErrorMessage(verifyData.message || 'Payment verification failed.')
@@ -260,24 +270,40 @@ export default function BookingSection({ onTicketGenerated }) {
               </div>
             )}
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-4 rounded-xl text-sm font-extrabold uppercase tracking-wider bg-neon-pink text-[#080612] shadow-[0_0_25px_rgba(255,53,196,0.4)] hover:shadow-[0_0_35px_rgba(255,53,196,0.65)] hover:opacity-95 transition-all cursor-pointer mt-3"
-            >
-              {loading ? (
-                'Processing & Generating Pass...'
-              ) : (
-                <>
-                  <QrCode size={18} /> Pay with Razorpay & Get E-Pass
-                </>
-              )}
-            </button>
+            {/* Submit Button & Trust Badge */}
+            <div className="mt-3 space-y-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl text-sm font-extrabold uppercase tracking-wider bg-[#0c83eb] hover:bg-[#0a74d4] text-white active:scale-[0.99] transition-all cursor-pointer shadow-[0_4px_16px_rgba(12,131,235,0.25)]"
+              >
+                {loading ? (
+                  'Processing & Generating Pass...'
+                ) : (
+                  <>
+                    <Lock size={16} />
+                    <span>Proceed to Pay & Get E-Pass</span>
+                  </>
+                )}
+              </button>
 
-            <p className="text-center text-xs text-[#8a8299] pt-1">
-              Secure UPI / Card Payment • Instant QR Pass on Screen & Email
-            </p>
+              <div className="flex items-center justify-center gap-1.5 pt-0.5 text-xs text-white/50 select-none">
+                <span>Secured by</span>
+                <span className="inline-flex items-center gap-1">
+                  <svg
+                    role="img"
+                    viewBox="0 0 24 24"
+                    className="w-3.5 h-3.5 fill-[#0C83EB] shrink-0"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path d="M22.436 0l-11.91 7.773-1.174 4.276 6.625-4.297L11.65 24h4.391l6.395-24zM14.26 10.098L3.389 17.166 1.564 24h9.008l3.688-13.902Z" />
+                  </svg>
+                  <span className="font-sans font-semibold tracking-tight text-xs text-white/90">
+                    Razorpay
+                  </span>
+                </span>
+              </div>
+            </div>
           </form>
         </div>
       </div>

@@ -9,16 +9,28 @@ import {
   RefreshCw,
   X,
   Calendar,
+  ChevronDown,
 } from 'lucide-react'
+import Pagination from '../../components/admin/Pagination'
+import DateFilter, { matchesDateFilter } from '../../components/admin/DateFilter'
+import { useDebounce } from '../../hooks/useDebounce'
 import { API_BASE_URL } from '../../config/api'
 
 export default function InquiriesPage() {
   const [inquiries, setInquiries] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [datePreset, setDatePreset] = useState('all')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [updatingId, setUpdatingId] = useState(null)
   const [selectedInquiry, setSelectedInquiry] = useState(null)
+
+  // 300ms Debounce for instant search filtering
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
 
   // Fetch inquiries from backend
   const fetchInquiries = async () => {
@@ -88,9 +100,9 @@ export default function InquiriesPage() {
 
   // Export to CSV
   const exportToCSV = () => {
-    if (inquiries.length === 0) return
+    if (filteredInquiries.length === 0) return
     const headers = ['Date', 'Time', 'Name', 'Phone', 'Email', 'Subject', 'Message', 'Status']
-    const rows = inquiries.map((i) => {
+    const rows = filteredInquiries.map((i) => {
       const d = new Date(i.createdAt)
       return [
         `"${d.toLocaleDateString('en-IN')}"`,
@@ -128,7 +140,7 @@ export default function InquiriesPage() {
   const filteredInquiries = inquiries.filter((item) => {
     const matchesStatus =
       statusFilter === 'ALL' || (item.status || 'NEW') === statusFilter
-    const q = searchQuery.toLowerCase().trim()
+    const q = debouncedSearchQuery.toLowerCase().trim()
     const matchesSearch =
       !q ||
       (item.name && item.name.toLowerCase().includes(q)) ||
@@ -136,11 +148,23 @@ export default function InquiriesPage() {
       (item.phone && item.phone.toLowerCase().includes(q)) ||
       (item.subject && item.subject.toLowerCase().includes(q)) ||
       (item.message && item.message.toLowerCase().includes(q))
-    return matchesStatus && matchesSearch
+    const matchesDate = matchesDateFilter(item.createdAt, datePreset, startDate, endDate)
+    return matchesStatus && matchesSearch && matchesDate
   })
 
+  // Reset to page 1 on search, filter, date range, or page size change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearchQuery, statusFilter, pageSize, datePreset, startDate, endDate])
+
+  // Paginated slice
+  const paginatedInquiries = filteredInquiries.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
   return (
-    <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+    <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6">
       {/* Header and Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
@@ -151,46 +175,69 @@ export default function InquiriesPage() {
         </div>
 
         {/* Filter and Search Toolbar */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Search */}
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40" />
             <input
               type="text"
               placeholder="Search name, phone, message..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-black/50 border border-white/15 rounded-xl text-xs text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan w-48 sm:w-60"
+              className="h-9 w-44 sm:w-56 pl-8 pr-7 bg-black/50 border border-white/15 rounded-lg text-xs text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan transition-all"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
 
-          {/* Status Filter Dropdown */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-black/50 border border-white/15 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-neon-cyan cursor-pointer"
-          >
-            <option value="ALL" className="bg-[#0f091f]">All Status ({totalCount})</option>
-            <option value="NEW" className="bg-[#0f091f]">New ({newCount})</option>
-            <option value="CONTACTED" className="bg-[#0f091f]">Contacted ({contactedCount})</option>
-            <option value="RESOLVED" className="bg-[#0f091f]">Resolved ({resolvedCount})</option>
-          </select>
+          {/* Compact Status Filter Dropdown */}
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-9 appearance-none pl-3 pr-7 bg-black/60 border border-white/15 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-neon-cyan cursor-pointer hover:bg-white/5 transition-all"
+            >
+              <option value="ALL" className="bg-[#0f091f] text-white">All Status ({totalCount})</option>
+              <option value="NEW" className="bg-[#0f091f] text-amber-300">New ({newCount})</option>
+              <option value="CONTACTED" className="bg-[#0f091f] text-neon-pink">Contacted ({contactedCount})</option>
+              <option value="RESOLVED" className="bg-[#0f091f] text-emerald-300">Resolved ({resolvedCount})</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
+          </div>
+
+          {/* Date Filter */}
+          <DateFilter
+            datePreset={datePreset}
+            setDatePreset={setDatePreset}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+          />
 
           {/* Refresh & CSV */}
           <button
             onClick={fetchInquiries}
-            className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/70 hover:text-white transition-all cursor-pointer"
+            className="h-9 w-9 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
             title="Refresh Inquiries"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'animate-spin text-neon-cyan' : ''} />
           </button>
           <button
             onClick={exportToCSV}
             disabled={inquiries.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/15 border border-white/10 rounded-xl text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-40"
+            className="h-9 px-3 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold text-white flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 whitespace-nowrap shrink-0"
           >
             <Download size={13} />
-            <span className="hidden sm:inline">Export CSV</span>
+            <span>Export CSV</span>
           </button>
         </div>
       </div>
@@ -225,7 +272,7 @@ export default function InquiriesPage() {
                 </td>
               </tr>
             ) : (
-              filteredInquiries.map((inquiry) => {
+              paginatedInquiries.map((inquiry) => {
                 const d = new Date(inquiry.createdAt)
                 const dateStr = d.toLocaleDateString('en-IN', {
                   day: '2-digit',
@@ -316,10 +363,22 @@ export default function InquiriesPage() {
         </table>
       </div>
 
+      {/* Pagination Controls */}
+      {filteredInquiries.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredInquiries.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+        />
+      )}
+
       {/* Detail Modal when row is clicked */}
       {selectedInquiry && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-[#0f091f] border border-white/20 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5">
+          <div className="relative w-full max-w-lg bg-[#0f091f] border border-white/20 rounded-3xl p-6 sm:p-7 space-y-5">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>

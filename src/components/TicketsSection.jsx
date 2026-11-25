@@ -20,7 +20,7 @@ export default function TicketsSection({ onOpenBooking }) {
   }, [])
 
   return (
-    <section className="py-24 max-w-6xl mx-auto px-6" id="tickets">
+    <section className="py-24 max-w-6xl mx-auto px-6 scroll-mt-28" id="tickets">
       {/* Section Header */}
       <div className="text-center max-w-2xl mx-auto mb-16">
         <h2 className="font-bold font-space text-4xl sm:text-5xl text-white tracking-tight">

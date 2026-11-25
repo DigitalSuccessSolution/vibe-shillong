@@ -56,7 +56,8 @@ router.get('/', async (req, res) => {
       }
     }
 
-    const transactions = await Transaction.find().sort({ createdAt: -1 }).limit(200)
+    const limit = parseInt(req.query.limit) || 1000
+    const transactions = await Transaction.find().sort({ createdAt: -1 }).limit(limit)
 
     // Calculate Summary Metrics
     const totalTransactions = transactions.length

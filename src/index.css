@@ -17,6 +17,52 @@
   color: #f8f5ff;
   background-color: #080612;
   scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+/* ======================================================== */
+/* Global Sleek Dark Theme Scrollbar */
+/* ======================================================== */
+/* Modern standard (Firefox, Chrome 121+) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* WebKit (Chrome, Edge, Safari, Brave) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(53, 234, 255, 0.45);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Remove default OS up/down arrow buttons */
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* Animated Flowing Gradient Text Effect (Pink -> Purple -> Cyan -> Pink) */
@@ -152,4 +198,51 @@
     print-color-adjust: exact !important;
     box-shadow: none !important;
   }
+}
+
+/* ======================================================== */
+/* Gate Scanner Video & Viewfinder Full-Box Styling */
+/* ======================================================== */
+#admin-qr-reader {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+#admin-qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1.5rem !important;
+}
+
+/* Hide html5-qrcode's default squashed/distorted shaded box and canvas borders */
+#admin-qr-reader #qr-shaded-region,
+#admin-qr-reader [id*="qr-shaded-region"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  border: none !important;
+}
+
+/* Laser Scan Sweeping Beam */
+@keyframes scanner-laser {
+  0% {
+    top: 6%;
+    opacity: 0.7;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 6%;
+    opacity: 0.7;
+  }
+}
+
+.animate-scanner-laser {
+  animation: scanner-laser 2.2s ease-in-out infinite;
 }

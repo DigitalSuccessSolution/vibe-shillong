@@ -17,8 +17,14 @@ import {
   AlertTriangle,
   RefreshCw,
   Download,
+  ChevronDown,
+  Copy,
+  Check,
 } from 'lucide-react'
 import TicketModal from '../../components/TicketModal'
+import Pagination from '../../components/admin/Pagination'
+import DateFilter, { matchesDateFilter } from '../../components/admin/DateFilter'
+import { useDebounce } from '../../hooks/useDebounce'
 import { API_BASE_URL } from '../../config/api'
 
 export default function AttendeesPage({
@@ -29,9 +35,38 @@ export default function AttendeesPage({
   const [localTickets, setLocalTickets] = useState([])
   const [internalLoading, setInternalLoading] = useState(false)
   const [attendeeFilter, setAttendeeFilter] = useState('all') // 'all' | 'USED' | 'VALID' | 'CANCELLED'
+  const [datePreset, setDatePreset] = useState('all')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [previewTicket, setPreviewTicket] = useState(null)
+  const [copiedId, setCopiedId] = useState('')
+
+  const copyToClipboard = (text, key) => {
+    if (!text) return
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+      } else {
+        const el = document.createElement('textarea')
+        el.value = text
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+      }
+      setCopiedId(key)
+      setTimeout(() => setCopiedId(''), 2000)
+    } catch (err) {
+      console.error('Failed to copy ticket ID:', err)
+    }
+  }
+
+  // 300ms Debounce for instant, lag-free search filtering
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
 
   // Keep localTickets in sync when parent prop updates
   useEffect(() => {
@@ -89,7 +124,7 @@ export default function AttendeesPage({
       'Check-In Time',
     ]
 
-    const rows = ticketsList.map((t) => {
+    const rows = filteredAttendees.map((t) => {
       const bookedDt = formatDateTime(t.createdAt)
       const checkInDt = formatDateTime(t.scannedAt)
       return [
@@ -130,12 +165,27 @@ export default function AttendeesPage({
   const filteredAttendees = ticketsList.filter((t) => {
     const matchesFilter =
       attendeeFilter === 'all' ? true : t.status === attendeeFilter
+    const q = debouncedSearchQuery.toLowerCase().trim()
     const matchesSearch =
-      (t.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.ticketId || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.customerPhone || '').includes(searchQuery)
-    return matchesFilter && matchesSearch
+      !q ||
+      (t.customerName || '').toLowerCase().includes(q) ||
+      (t.ticketId || '').toLowerCase().includes(q) ||
+      (t.customerPhone || '').includes(q) ||
+      (t.customerEmail || '').toLowerCase().includes(q)
+    const matchesDate = matchesDateFilter(t.createdAt, datePreset, startDate, endDate)
+    return matchesFilter && matchesSearch && matchesDate
   })
+
+  // Automatically reset to page 1 whenever search query, filter, date range, or page size changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearchQuery, attendeeFilter, pageSize, datePreset, startDate, endDate])
+
+  // Paginated slice
+  const paginatedAttendees = filteredAttendees.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
 
   // Format Date and Time helper
   const formatDateTime = (dateString) => {
@@ -161,95 +211,86 @@ export default function AttendeesPage({
   }
 
   return (
-    <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+    <div className="bg-[#0f091f] border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6">
       {/* Header and Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-white/10 pb-4">
         <div>
-          <h3 className="font-bold font-space text-xl text-white">Attendee Directory & Timeline</h3>
-          <p className="text-xs text-white/50">
+          <h3 className="font-bold font-space text-lg text-white">Attendee Directory & Timeline</h3>
+          <p className="text-xs text-white/50 mt-0.5">
             Audit trail of ticket booking, payment mode, and gate check-in timestamps
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Filters & Actions */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search */}
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40" />
             <input
               type="text"
               placeholder="Search name, phone, ticket ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-black/50 border border-white/15 rounded-xl text-xs text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan w-56 sm:w-64"
+              className="h-9 w-44 sm:w-56 pl-8 pr-7 bg-black/50 border border-white/15 rounded-lg text-xs text-white placeholder-white/30 focus:outline-none focus:border-neon-cyan transition-all"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10 text-xs">
-            <button
-              onClick={() => setAttendeeFilter('all')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                attendeeFilter === 'all'
-                  ? 'bg-neon-cyan text-[#071016]'
-                  : 'text-white/60 hover:text-white'
-              }`}
+          {/* Compact Pass Status Filter Dropdown */}
+          <div className="relative">
+            <select
+              value={attendeeFilter}
+              onChange={(e) => setAttendeeFilter(e.target.value)}
+              className="h-9 appearance-none pl-3 pr-7 bg-black/60 border border-white/15 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-neon-cyan cursor-pointer hover:bg-white/5 transition-all"
             >
-              All ({totalSold})
-            </button>
-            <button
-              onClick={() => setAttendeeFilter('USED')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                attendeeFilter === 'USED'
-                  ? 'bg-emerald-400 text-[#071016]'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Checked-In ({totalScanned})
-            </button>
-            <button
-              onClick={() => setAttendeeFilter('VALID')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                attendeeFilter === 'VALID'
-                  ? 'bg-amber-400 text-[#071016]'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Valid ({totalPending})
-            </button>
-            <button
-              onClick={() => setAttendeeFilter('CANCELLED')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                attendeeFilter === 'CANCELLED'
-                  ? 'bg-red-400 text-[#071016]'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              Refunded ({totalCancelled})
-            </button>
+              <option value="all" className="bg-[#0f091f] text-white">All Passes ({totalSold})</option>
+              <option value="USED" className="bg-[#0f091f] text-emerald-300">Checked-In ({totalScanned})</option>
+              <option value="VALID" className="bg-[#0f091f] text-amber-300">Valid / Pending ({totalPending})</option>
+              <option value="CANCELLED" className="bg-[#0f091f] text-red-300">Refunded ({totalCancelled})</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
           </div>
 
-          {/* Refresh & CSV Buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/80 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-              title="Refresh Booked Tickets"
-            >
-              <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-neon-cyan' : ''} />
-              <span>Refresh</span>
-            </button>
+          {/* Date Filter */}
+          <DateFilter
+            datePreset={datePreset}
+            setDatePreset={setDatePreset}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+          />
 
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/80 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Export Booked Tickets to CSV"
-            >
-              <Download size={13} />
-              <span className="hidden sm:inline">CSV</span>
-            </button>
-          </div>
+          {/* Refresh Button */}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-9 w-9 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 shrink-0"
+            title="Refresh Booked Tickets"
+          >
+            <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-neon-cyan' : ''} />
+          </button>
+
+          {/* Export CSV Button */}
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="h-9 px-3 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0"
+            title="Export Booked Tickets to CSV"
+          >
+            <Download size={13} />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 
@@ -281,7 +322,7 @@ export default function AttendeesPage({
                 </td>
               </tr>
             ) : (
-              filteredAttendees.map((t) => {
+              paginatedAttendees.map((t) => {
                 const bookedDt = formatDateTime(t.createdAt)
                 const checkInDt = formatDateTime(t.scannedAt)
 
@@ -292,8 +333,27 @@ export default function AttendeesPage({
                     className="hover:bg-white/5 transition-colors cursor-pointer group"
                   >
                     {/* Ticket ID */}
-                    <td className="py-3.5 px-4 font-mono font-bold text-neon-cyan">
-                      {t.ticketId}
+                    <td className="py-3.5 px-4 font-mono">
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="font-bold text-neon-cyan select-all">
+                          {t.ticketId}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            copyToClipboard(t.ticketId, t.ticketId)
+                          }}
+                          className="p-1 rounded-md hover:bg-white/10 text-white/40 hover:text-neon-cyan transition-colors cursor-pointer"
+                          title={copiedId === t.ticketId ? 'Copied to clipboard!' : 'Copy Ticket ID'}
+                        >
+                          {copiedId === t.ticketId ? (
+                            <Check size={13} className="text-emerald-400 animate-in zoom-in-75" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
+                        </button>
+                      </div>
                     </td>
 
                     {/* Attendee Info */}
@@ -385,6 +445,18 @@ export default function AttendeesPage({
         </table>
       </div>
 
+      {/* Pagination Controls */}
+      {filteredAttendees.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredAttendees.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50, 100]}
+        />
+      )}
+
       {/* INTERACTIVE TIMELINE MODAL */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto no-scrollbar">
@@ -417,7 +489,23 @@ export default function AttendeesPage({
               </div>
               <div>
                 <span className="text-[10px] text-white/40 uppercase block">Ticket ID</span>
-                <strong className="text-neon-cyan font-mono text-sm">{selectedTicket.ticketId}</strong>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <strong className="text-neon-cyan font-mono text-sm select-all">
+                    {selectedTicket.ticketId}
+                  </strong>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(selectedTicket.ticketId, `modal_${selectedTicket.ticketId}`)}
+                    className="p-1 rounded-md hover:bg-white/10 text-white/40 hover:text-neon-cyan transition-colors cursor-pointer"
+                    title={copiedId === `modal_${selectedTicket.ticketId}` ? 'Copied!' : 'Copy Ticket ID'}
+                  >
+                    {copiedId === `modal_${selectedTicket.ticketId}` ? (
+                      <Check size={13} className="text-emerald-400" />
+                    ) : (
+                      <Copy size={13} />
+                    )}
+                  </button>
+                </div>
                 <div className="text-[11px] text-neon-pink capitalize font-semibold">
                   {selectedTicket.eventType} Pass • ₹{selectedTicket.amountPaid}
                 </div>
