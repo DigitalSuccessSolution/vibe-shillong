@@ -6,7 +6,7 @@
 
 set -e
 
-APP_DIR="/var/www/vibeshillong"
+APP_DIR="/var/www/vibe-shillong"
 
 echo "📂 [1/4] Preparing isolated folder at $APP_DIR..."
 sudo mkdir -p $APP_DIR
