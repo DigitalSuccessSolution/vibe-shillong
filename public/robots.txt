@@ -1,0 +1,15 @@
+# robots.txt for https://vibeshillong.com
+User-agent: *
+Allow: /
+Allow: /event/kids
+Allow: /event/adult
+Allow: /my-bookings
+Disallow: /api/
+Disallow: /secure-login/
+Disallow: /admin/
+Disallow: /*?*ticket=
+Disallow: /*?*download=
+
+# Sitemap index
+Sitemap: https://vibeshillong.com/sitemap.xml
+Host: https://vibeshillong.com
