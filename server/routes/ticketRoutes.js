@@ -5,6 +5,7 @@ import Razorpay from 'razorpay'
 import Ticket from '../models/Ticket.js'
 import Transaction from '../models/Transaction.js'
 import Coupon from '../models/Coupon.js'
+import Package from '../models/Package.js'
 import { sendTicketEmail } from '../utils/emailService.js'
 
 const router = express.Router()
@@ -208,11 +209,24 @@ router.post('/book', async (req, res) => {
 router.post('/create-order', async (req, res) => {
   try {
     const { amount, eventType, customerName, customerEmail, customerPhone, quantity, couponCode } = req.body
-    if (!amount || Number(amount) <= 0) {
-      return res.status(400).json({ success: false, message: 'Valid amount is required.' })
+    const cleanEventType = (eventType || 'adult').toLowerCase()
+    const safeQuantity = Math.max(1, Number(quantity) || 1)
+
+    // Strictly resolve price from Database (prevents client-side price manipulation)
+    const defaultPrices = { kids: 1000, adult: 1499, vip: 3500 }
+    let pricePerTicket = defaultPrices[cleanEventType] || 1499
+
+    try {
+      const pkg = await Package.findOne({ key: cleanEventType })
+      if (pkg && Number(pkg.price) >= 0) {
+        pricePerTicket = Number(pkg.price)
+      }
+    } catch (pkgErr) {
+      console.warn('[Package price lookup]:', pkgErr.message)
     }
 
-    let finalPayable = Math.max(1, Number(amount) || 0)
+    const calculatedBaseAmount = pricePerTicket * safeQuantity
+    let finalPayable = calculatedBaseAmount
     let appliedDiscount = 0
     let validCouponCode = null
 
@@ -224,21 +238,21 @@ router.post('/create-order', async (req, res) => {
         if (couponDoc) {
           const notExpired = !couponDoc.validTill || new Date() <= new Date(couponDoc.validTill)
           const withinLimit = !couponDoc.usageLimit || couponDoc.usedCount < couponDoc.usageLimit
-          const meetsMin = !couponDoc.minOrderAmount || finalPayable >= couponDoc.minOrderAmount
+          const meetsMin = !couponDoc.minOrderAmount || calculatedBaseAmount >= couponDoc.minOrderAmount
           const eventMatch =
             couponDoc.applicableEvents.includes('all') ||
-            couponDoc.applicableEvents.includes((eventType || '').toLowerCase())
+            couponDoc.applicableEvents.includes(cleanEventType)
 
           if (notExpired && withinLimit && meetsMin && eventMatch) {
             if (couponDoc.discountType === 'percentage') {
-              appliedDiscount = Math.round((finalPayable * couponDoc.discountValue) / 100)
+              appliedDiscount = Math.round((calculatedBaseAmount * couponDoc.discountValue) / 100)
               if (couponDoc.maxDiscount && appliedDiscount > couponDoc.maxDiscount) {
                 appliedDiscount = couponDoc.maxDiscount
               }
             } else {
-              appliedDiscount = Math.min(couponDoc.discountValue, finalPayable)
+              appliedDiscount = Math.min(couponDoc.discountValue, calculatedBaseAmount)
             }
-            finalPayable = Math.max(1, finalPayable - appliedDiscount)
+            finalPayable = Math.max(1, calculatedBaseAmount - appliedDiscount)
             validCouponCode = couponDoc.code
           }
         }
@@ -252,14 +266,14 @@ router.post('/create-order', async (req, res) => {
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
       notes: {
-        eventType: eventType || 'general',
+        eventType: cleanEventType,
         customerName: customerName || '',
         customerEmail: customerEmail || '',
         customerPhone: customerPhone || '',
-        quantity: String(quantity || 1),
+        quantity: String(safeQuantity),
         couponCode: validCouponCode || '',
         discountAmount: String(appliedDiscount),
-        originalAmount: String(amount),
+        originalAmount: String(calculatedBaseAmount),
       },
     }
 
@@ -410,8 +424,9 @@ router.post('/verify-payment', async (req, res) => {
 
     const ticketId = generateTicketId(eventType.toUpperCase())
 
-    // Fetch live payment details from Razorpay to get the EXACT payment method (UPI, Netbanking, Card)
+    // Fetch live payment details from Razorpay to get the EXACT payment method (UPI, Netbanking, Card) & authentic amount
     let resolvedPaymentMode = 'UPI'
+    let resolvedAmountPaid = Number(amountPaid) || 0
     if (!isSandboxPayment && key_secret) {
       try {
         const rzp = new Razorpay({
@@ -421,6 +436,9 @@ router.post('/verify-payment', async (req, res) => {
         const paymentDetails = await rzp.payments.fetch(razorpay_payment_id)
         if (paymentDetails) {
           resolvedPaymentMode = formatPaymentMethod(paymentDetails)
+          if (paymentDetails.amount) {
+            resolvedAmountPaid = paymentDetails.amount / 100
+          }
         }
       } catch (fetchErr) {
         console.warn('[Fetch Razorpay Method]:', fetchErr.message)
@@ -437,8 +455,8 @@ router.post('/verify-payment', async (req, res) => {
       eventType,
       eventTitle: eventTitles[eventType] || 'Neon Event Pass',
       quantity: Number(quantity) || 1,
-      amountPaid: Number(amountPaid) || 0,
-      originalAmount: Number(originalAmount) || Number(amountPaid) || 0,
+      amountPaid: resolvedAmountPaid,
+      originalAmount: Number(originalAmount) || resolvedAmountPaid,
       discountAmount: Number(discountAmount) || 0,
       couponCode: couponCode ? String(couponCode).trim().toUpperCase() : null,
       paymentId: razorpay_payment_id,
