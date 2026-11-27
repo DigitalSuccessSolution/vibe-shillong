@@ -39,6 +39,8 @@ export default function CouponsPage() {
     applicableEvents: ['all'],
     description: '',
     isActive: true,
+    showOnWebsite: false,
+    oneUsePerEmail: true,
   }
 
   const [formData, setFormData] = useState(initialForm)
@@ -63,6 +65,8 @@ export default function CouponsPage() {
       applicableEvents: coupon.applicableEvents || ['all'],
       description: coupon.description || '',
       isActive: coupon.isActive !== undefined ? coupon.isActive : true,
+      showOnWebsite: Boolean(coupon.showOnWebsite),
+      oneUsePerEmail: coupon.oneUsePerEmail !== undefined ? Boolean(coupon.oneUsePerEmail) : true,
     })
     setFormError('')
     setIsModalOpen(true)
@@ -162,6 +166,8 @@ export default function CouponsPage() {
         applicableEvents: formData.applicableEvents,
         description: formData.description.trim(),
         isActive: formData.isActive,
+        showOnWebsite: Boolean(formData.showOnWebsite),
+        oneUsePerEmail: Boolean(formData.oneUsePerEmail),
       }
 
       if (editingCouponId) {
@@ -337,6 +343,26 @@ export default function CouponsPage() {
                           {coupon.description}
                         </span>
                       )}
+                      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                        {coupon.showOnWebsite ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/30">
+                            🌐 Shown on Website
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-white/5 text-white/40 border border-white/10">
+                            🔒 Private / Influencer
+                          </span>
+                        )}
+                        {coupon.oneUsePerEmail !== false ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            👤 1 use/email
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                            ♾️ Multi-use
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Discount */}
@@ -411,14 +437,13 @@ export default function CouponsPage() {
                       </span>
                     </td>
 
-                    {/* Status Toggle */}
+                    {/* Status Badge (Read-Only) */}
                     <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={() => handleToggleActive(coupon)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider select-none ${
                           coupon.isActive && !isExpired && !isLimitReached
-                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
-                            : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-white/5 text-white/40 border border-white/10'
                         }`}
                       >
                         <span
@@ -428,8 +453,8 @@ export default function CouponsPage() {
                               : 'bg-white/30'
                           }`}
                         />
-                        <span>{coupon.isActive ? 'Active' : 'Disabled'}</span>
-                      </button>
+                        <span>{coupon.isActive && !isExpired && !isLimitReached ? 'ACTIVE' : 'DISABLED'}</span>
+                      </span>
                     </td>
 
                     {/* Actions: Edit & Delete */}
@@ -620,6 +645,44 @@ export default function CouponsPage() {
                   <option value="kids">Kids Carnival Passes Only</option>
                   <option value="vip">VIP Passes Only</option>
                 </select>
+              </div>
+
+              {/* Coupon Status Dropdown */}
+              <div>
+                <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1.5">
+                  Coupon Status
+                </label>
+                <select
+                  value={formData.isActive ? 'active' : 'disabled'}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'active' })}
+                  className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white text-xs font-semibold focus:outline-none focus:border-neon-cyan"
+                >
+                  <option value="active">✓ ACTIVE (Customers can apply this coupon)</option>
+                  <option value="disabled">✕ DISABLED (Temporarily deactivated)</option>
+                </select>
+              </div>
+
+              {/* Settings Checkboxes (Clean Simple Inline) */}
+              <div className="flex items-center gap-6 py-1">
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-white/90">
+                  <input
+                    type="checkbox"
+                    checked={formData.showOnWebsite}
+                    onChange={(e) => setFormData({ ...formData, showOnWebsite: e.target.checked })}
+                    className="w-4 h-4 rounded text-neon-cyan focus:ring-0 cursor-pointer"
+                  />
+                  <span>Show on Website</span>
+                </label>
+
+                <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-white/90">
+                  <input
+                    type="checkbox"
+                    checked={formData.oneUsePerEmail}
+                    onChange={(e) => setFormData({ ...formData, oneUsePerEmail: e.target.checked })}
+                    className="w-4 h-4 rounded text-neon-cyan focus:ring-0 cursor-pointer"
+                  />
+                  <span>1 Use Per Email</span>
+                </label>
               </div>
 
               {/* Description / Influencer Note */}

@@ -56,6 +56,16 @@ const couponSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    showOnWebsite: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    oneUsePerEmail: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
   },
   {
     timestamps: true,

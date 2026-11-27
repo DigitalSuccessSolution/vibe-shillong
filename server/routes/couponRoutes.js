@@ -1,6 +1,7 @@
 import express from 'express'
 import mongoose from 'mongoose'
 import Coupon from '../models/Coupon.js'
+import Ticket from '../models/Ticket.js'
 
 const router = express.Router()
 
@@ -22,7 +23,7 @@ router.use((req, res, next) => {
  */
 router.post('/validate', async (req, res) => {
   try {
-    const { code, orderAmount = 0, eventType = 'adult' } = req.body || {}
+    const { code, orderAmount = 0, eventType = 'adult', email = '' } = req.body || {}
 
     if (!code || !code.trim()) {
       return res.status(400).json({
@@ -86,6 +87,23 @@ router.post('/validate', async (req, res) => {
       })
     }
 
+    // Check 1 use per customer email restriction (default true unless explicitly false)
+    const isOneUsePerEmail = coupon.oneUsePerEmail !== false
+    const cleanEmail = (email || '').trim().toLowerCase()
+
+    if (isOneUsePerEmail && cleanEmail) {
+      const priorTicket = await Ticket.findOne({
+        customerEmail: cleanEmail,
+        couponCode: cleanCode,
+      })
+      if (priorTicket) {
+        return res.status(400).json({
+          success: false,
+          message: `Coupon "${cleanCode}" has already been used once with this email (${cleanEmail}).`,
+        })
+      }
+    }
+
     // Calculate Discount
     let discountAmount = 0
     if (coupon.discountType === 'percentage') {
@@ -130,6 +148,34 @@ router.post('/validate', async (req, res) => {
 })
 
 /**
+ * 1B. Public Available Coupons (For Website Visitors)
+ * GET /api/coupons/public
+ */
+router.get('/public', async (req, res) => {
+  try {
+    const now = new Date()
+    const coupons = await Coupon.find({
+      isActive: true,
+      showOnWebsite: true,
+      $or: [{ validTill: null }, { validTill: { $gt: now } }],
+    }).sort({ createdAt: -1 })
+
+    const available = coupons.filter(
+      (c) => !c.usageLimit || c.usedCount < c.usageLimit
+    )
+
+    return res.json({
+      success: true,
+      count: available.length,
+      coupons: available,
+    })
+  } catch (error) {
+    console.error('[Public Coupons Error]:', error)
+    return res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+/**
  * 2. List All Coupons (Admin Portal)
  * GET /api/coupons
  */
@@ -167,6 +213,8 @@ router.post('/', async (req, res) => {
       applicableEvents = ['all'],
       description = '',
       isActive = true,
+      showOnWebsite = false,
+      oneUsePerEmail = true,
     } = req.body || {}
 
     if (!code || !code.trim()) {
@@ -198,6 +246,8 @@ router.post('/', async (req, res) => {
       applicableEvents: Array.isArray(applicableEvents) && applicableEvents.length > 0 ? applicableEvents : ['all'],
       description: (description || '').trim(),
       isActive: Boolean(isActive),
+      showOnWebsite: Boolean(showOnWebsite),
+      oneUsePerEmail: oneUsePerEmail !== undefined ? Boolean(oneUsePerEmail) : true,
     })
 
     const saved = await newCoupon.save()
@@ -224,6 +274,8 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params
     const {
       isActive,
+      showOnWebsite,
+      oneUsePerEmail,
       discountValue,
       discountType,
       maxDiscount,
@@ -236,6 +288,8 @@ router.put('/:id', async (req, res) => {
 
     const updateFields = {}
     if (isActive !== undefined) updateFields.isActive = Boolean(isActive)
+    if (showOnWebsite !== undefined) updateFields.showOnWebsite = Boolean(showOnWebsite)
+    if (oneUsePerEmail !== undefined) updateFields.oneUsePerEmail = Boolean(oneUsePerEmail)
     if (discountValue !== undefined) updateFields.discountValue = Number(discountValue)
     if (discountType !== undefined) updateFields.discountType = discountType
     if (maxDiscount !== undefined) updateFields.maxDiscount = maxDiscount ? Number(maxDiscount) : null

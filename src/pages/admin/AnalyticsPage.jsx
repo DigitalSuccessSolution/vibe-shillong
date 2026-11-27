@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Ticket as TicketIcon, CheckCircle2, Clock, DollarSign } from 'lucide-react'
+import { Ticket as TicketIcon, CheckCircle2, Clock, IndianRupee } from 'lucide-react'
 import { API_BASE_URL } from '../../config/api'
 
 export default function AnalyticsPage({ ticketsList = [] }) {
@@ -52,8 +52,8 @@ export default function AnalyticsPage({ ticketsList = [] }) {
 
         <div className="bg-[#0f091f] border border-white/10 rounded-2xl p-4">
           <div className="flex items-center justify-between text-neon-cyan text-[11px] uppercase font-bold mb-1">
-            <span>Total Value</span>
-            <DollarSign size={14} className="text-neon-cyan" />
+            <span>Total Revenue</span>
+            <IndianRupee size={14} className="text-neon-cyan" />
           </div>
           <div className="font-space font-bold text-2xl text-neon-cyan">
             ₹{totalRevenue.toLocaleString('en-IN')}

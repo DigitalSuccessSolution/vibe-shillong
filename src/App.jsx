@@ -16,6 +16,8 @@ import Footer from './components/Footer'
 import MobileStickyCTA from './components/MobileStickyCTA'
 import TicketModal from './components/TicketModal'
 import BookingDrawer from './components/BookingDrawer'
+import FloatingOfferPill from './components/FloatingOfferPill'
+import WhatsAppCTA from './components/WhatsAppCTA'
 import AdminPanel from './pages/AdminPanel'
 import KidsEventDetailPage from './pages/KidsEventDetailPage'
 import AdultEventDetailPage from './pages/AdultEventDetailPage'
@@ -28,6 +30,7 @@ export default function App() {
   const [autoDownloadTicket, setAutoDownloadTicket] = useState(false)
   const [isBookingOpen, setIsBookingOpen] = useState(false)
   const [selectedPackageKey, setSelectedPackageKey] = useState('adult')
+  const [initialCouponCode, setInitialCouponCode] = useState('')
   const [packages, setPackages] = useState(DEFAULT_PACKAGES)
 
   // Fetch real-time dynamic packages & prices from MongoDB
@@ -60,8 +63,9 @@ export default function App() {
     } catch {}
   }, [])
 
-  const handleOpenBooking = (packageKey = 'adult') => {
+  const handleOpenBooking = (packageKey = 'adult', couponCode = '') => {
     setSelectedPackageKey(packageKey)
+    setInitialCouponCode(couponCode || '')
     setIsBookingOpen(true)
   }
 
@@ -244,10 +248,22 @@ export default function App() {
       {/* Slide-over Fast Booking Drawer */}
       <BookingDrawer
         isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
+        onClose={() => {
+          setIsBookingOpen(false)
+          setInitialCouponCode('')
+        }}
         selectedPackageKey={selectedPackageKey}
+        initialCouponCode={initialCouponCode}
         onTicketGenerated={(ticket) => setActiveTicket(ticket)}
       />
+
+      {/* Floating Live Offer Pill (Bottom-Left Corner) */}
+      <FloatingOfferPill
+        onClaimOffer={(code, eventType) => handleOpenBooking(eventType || 'adult', code)}
+      />
+
+      {/* Floating WhatsApp Support CTA (Bottom-Right Corner) */}
+      <WhatsAppCTA />
 
       {/* Digital QR Ticket Modal for user upon booking */}
       <TicketModal

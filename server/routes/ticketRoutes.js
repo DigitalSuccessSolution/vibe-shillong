@@ -117,6 +117,27 @@ function formatPaymentMethod(entity = {}) {
   return 'UPI'
 }
 
+// Helper to dynamically resolve full event title from MongoDB Package (with fallback)
+async function getDynamicEventTitle(eventType) {
+  const cleanKey = (eventType || '').toLowerCase()
+  const defaultTitles = {
+    kids: 'Kids Neon Carnival (12 PM - 7:30 PM)',
+    adult: 'Adult Neon Nights ft. DJ Tina (8 PM Onwards)',
+    vip: 'VIP Neon Table & Backstage Pass',
+  }
+
+  try {
+    const pkg = await Package.findOne({ key: cleanKey })
+    if (pkg && pkg.title) {
+      return pkg.timing ? `${pkg.title} (${pkg.timing})` : pkg.title
+    }
+  } catch (err) {
+    console.warn('[Dynamic Event Title Lookup Error]:', err.message)
+  }
+
+  return defaultTitles[cleanKey] || 'Neon Event Pass'
+}
+
 /**
  * 1. Book / Issue a new Ticket (MongoDB)
  * POST /api/tickets/book
@@ -141,13 +162,8 @@ router.post('/book', async (req, res) => {
       })
     }
 
-    const eventTitles = {
-      kids: 'Kids Neon Carnival (12 PM - 7:30 PM)',
-      adult: 'Adult Neon Nights ft. DJ Tina (8 PM Onwards)',
-      vip: 'VIP Neon Table & Backstage Pass',
-    }
-
     const ticketId = generateTicketId(eventType.toUpperCase())
+    const resolvedEventTitle = await getDynamicEventTitle(eventType)
 
     // Create ticket in MongoDB
     const newTicket = new Ticket({
@@ -156,7 +172,7 @@ router.post('/book', async (req, res) => {
       customerPhone: customerPhone.trim(),
       customerEmail: customerEmail.trim().toLowerCase(),
       eventType,
-      eventTitle: eventTitles[eventType] || 'Neon Event Pass',
+      eventTitle: resolvedEventTitle,
       quantity: Number(quantity) || 1,
       amountPaid: Number(amountPaid) || 0,
       paymentId,
@@ -242,6 +258,28 @@ router.post('/create-order', async (req, res) => {
           const eventMatch =
             couponDoc.applicableEvents.includes('all') ||
             couponDoc.applicableEvents.includes(cleanEventType)
+
+          // Check 1-use-per-email restriction (default true)
+          const isOneUsePerEmail = couponDoc.oneUsePerEmail !== false
+          const cleanEmail = (customerEmail || '').trim().toLowerCase()
+          let alreadyUsed = false
+
+          if (isOneUsePerEmail && cleanEmail) {
+            const priorTicket = await Ticket.findOne({
+              customerEmail: cleanEmail,
+              couponCode: cleanCode,
+            })
+            if (priorTicket) {
+              alreadyUsed = true
+            }
+          }
+
+          if (alreadyUsed) {
+            return res.status(400).json({
+              success: false,
+              message: `Coupon "${cleanCode}" has already been used once with this email (${cleanEmail}).`,
+            })
+          }
 
           if (notExpired && withinLimit && meetsMin && eventMatch) {
             if (couponDoc.discountType === 'percentage') {
@@ -416,13 +454,8 @@ router.post('/verify-payment', async (req, res) => {
       })
     }
 
-    const eventTitles = {
-      kids: 'Kids Neon Carnival (12 PM - 7:30 PM)',
-      adult: 'Adult Neon Nights ft. DJ Tina (8 PM Onwards)',
-      vip: 'VIP Neon Table & Backstage Pass',
-    }
-
     const ticketId = generateTicketId(eventType.toUpperCase())
+    const resolvedEventTitle = await getDynamicEventTitle(eventType)
 
     // Fetch live payment details from Razorpay to get the EXACT payment method (UPI, Netbanking, Card) & authentic amount
     let resolvedPaymentMode = 'UPI'
@@ -453,7 +486,7 @@ router.post('/verify-payment', async (req, res) => {
       customerPhone: customerPhone.trim(),
       customerEmail: customerEmail.trim().toLowerCase(),
       eventType,
-      eventTitle: eventTitles[eventType] || 'Neon Event Pass',
+      eventTitle: resolvedEventTitle,
       quantity: Number(quantity) || 1,
       amountPaid: resolvedAmountPaid,
       originalAmount: Number(originalAmount) || resolvedAmountPaid,
@@ -549,6 +582,19 @@ router.post('/webhook', async (req, res) => {
       const paymentId = paymentEntity.id || (orderEntity.id ? `ORDER_${orderEntity.id}` : `PAY_${Date.now()}`)
       const orderId = paymentEntity.order_id || orderEntity.id || ''
 
+      // Option 2: Strictly require that this payment originated from the website booking flow
+      // If orderId is missing (e.g. direct Razorpay payment link / QR code) or has no customer notes, ignore it
+      const notes = paymentEntity.notes || orderEntity.notes || {}
+      if (!orderId || !orderId.startsWith('order_') || (!notes.customerEmail && !notes.customerName)) {
+        console.log(
+          `[Webhook] Payment ${paymentId} has no website booking orderId or customer notes. Skipping ticket generation (external payment).`
+        )
+        return res.status(200).json({
+          status: 'ignored',
+          message: 'Ignored external gateway transaction (not a website booking)',
+        })
+      }
+
       // Check if ticket was already created by client-side verification or previous webhook
       const existingTicket = await Ticket.findOne({
         $or: [
@@ -565,7 +611,6 @@ router.post('/webhook', async (req, res) => {
       }
 
       // If customer closed browser before client verification, issue ticket now
-      const notes = paymentEntity.notes || orderEntity.notes || {}
       const customerEmail = paymentEntity.email || notes.customerEmail || 'customer@vibeshillong.com'
       const customerPhone = notes.customerPhone || paymentEntity.contact || 'N/A'
       const customerName = notes.customerName || notes.name || 'VIBE Guest'
@@ -576,13 +621,8 @@ router.post('/webhook', async (req, res) => {
       const discountAmount = Number(notes.discountAmount) || 0
       const originalAmount = Number(notes.originalAmount) || amountPaid
 
-      const eventTitles = {
-        kids: 'Kids Neon Carnival (12 PM - 7:30 PM)',
-        adult: 'Adult Neon Nights ft. DJ Tina (8 PM Onwards)',
-        vip: 'VIP Neon Table & Backstage Pass',
-      }
-
       const ticketId = generateTicketId(eventType.toUpperCase())
+      const resolvedEventTitle = await getDynamicEventTitle(eventType)
 
       const resolvedPaymentMode = formatPaymentMethod(paymentEntity)
 
@@ -592,7 +632,7 @@ router.post('/webhook', async (req, res) => {
         customerPhone: customerPhone.trim(),
         customerEmail: customerEmail.trim().toLowerCase(),
         eventType,
-        eventTitle: eventTitles[eventType] || 'Neon Event Pass',
+        eventTitle: resolvedEventTitle,
         quantity,
         amountPaid,
         originalAmount,

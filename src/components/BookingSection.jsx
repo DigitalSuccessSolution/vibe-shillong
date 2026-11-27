@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowRight, CalendarDays, Check, ChevronDown, MapPin, Phone, QrCode, Tag, Sparkles, AlertCircle, Lock } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, ChevronDown, MapPin, Phone, QrCode, Tag, Sparkles, AlertCircle, Lock, Ticket, Percent } from 'lucide-react'
 import { API_BASE_URL } from '../config/api'
 import { DEFAULT_PACKAGES } from '../constants/packages'
 import { RazorpayBadge } from './BookingDrawer'
@@ -21,6 +21,19 @@ export default function BookingSection({ onTicketGenerated }) {
   const [appliedCoupon, setAppliedCoupon] = useState(null)
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
   const [couponError, setCouponError] = useState('')
+  const [publicCoupons, setPublicCoupons] = useState([])
+
+  // Fetch active public coupons for website
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/coupons/public`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.coupons)) {
+          setPublicCoupons(data.coupons)
+        }
+      })
+      .catch((err) => console.warn('Public coupons fetch error:', err))
+  }, [])
 
   const eventKey = formData.event === 'both' ? 'vip' : formData.event
   const selectedPkg = packages.find((p) => p.key === eventKey) || packages[0]
@@ -65,8 +78,9 @@ export default function BookingSection({ onTicketGenerated }) {
     }
   }, [eventKey, totalAmount])
 
-  const handleApplyCoupon = async () => {
-    const clean = (couponInput || '').trim().toUpperCase()
+  const handleApplyCoupon = async (codeOverride) => {
+    const raw = typeof codeOverride === 'string' ? codeOverride : couponInput
+    const clean = (raw || '').trim().toUpperCase()
     if (!clean) return
 
     setIsApplyingCoupon(true)
@@ -80,6 +94,7 @@ export default function BookingSection({ onTicketGenerated }) {
           code: clean,
           orderAmount: totalAmount,
           eventType: eventKey,
+          email: formData.email || '',
         }),
       })
       const data = await res.json()
@@ -373,67 +388,107 @@ export default function BookingSection({ onTicketGenerated }) {
             </div>
 
             {/* Promo Code / Coupon Section */}
-            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
-                  <Tag size={13} className="text-neon-cyan" />
-                  <span>Have a Promo Code?</span>
-                </label>
+            <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-white/80 flex items-center gap-1.5">
+                  <Tag size={12} className="text-neon-cyan" />
+                  <span>Promo Code</span>
+                </span>
                 {appliedCoupon && (
-                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                    <Sparkles size={11} /> Applied
+                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                    ✓ Applied
                   </span>
                 )}
               </div>
 
               {appliedCoupon ? (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-xs">
-                      ✓
-                    </div>
-                    <div>
-                      <span className="font-mono font-bold text-xs text-emerald-300 block">
-                        {appliedCoupon.code}
-                      </span>
-                      <span className="text-[10px] text-emerald-400/80 block">
-                        {appliedCoupon.message || `Saved ₹${discountAmount.toLocaleString('en-IN')}`}
-                      </span>
-                    </div>
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-mono font-bold text-emerald-300">
+                      {appliedCoupon.code}
+                    </span>
+                    <span className="text-[11px] text-emerald-400">
+                      (-₹{discountAmount.toLocaleString('en-IN')})
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={handleRemoveCoupon}
-                    className="text-[11px] text-white/50 hover:text-rose-400 font-bold px-2 py-1 rounded cursor-pointer transition-colors"
+                    className="text-[11px] font-semibold text-rose-400 hover:text-rose-300 cursor-pointer"
                   >
                     Remove
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter code (e.g. ROHIT10)"
-                    value={couponInput}
-                    onChange={(e) => {
-                      setCouponInput(e.target.value.toUpperCase())
-                      if (couponError) setCouponError('')
-                    }}
-                    className="flex-1 h-10 px-3 rounded-xl bg-black/50 border border-white/15 text-white text-xs font-mono tracking-wider uppercase focus:outline-none focus:border-neon-cyan"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyCoupon}
-                    disabled={isApplyingCoupon || !couponInput.trim()}
-                    className="h-10 px-4 rounded-xl bg-white/10 hover:bg-neon-cyan hover:text-[#071016] text-white text-xs font-bold transition-all disabled:opacity-40 cursor-pointer"
-                  >
-                    {isApplyingCoupon ? 'Checking...' : 'Apply'}
-                  </button>
-                </div>
+                <>
+                  {/* Single Clean Input with Embedded Apply */}
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="Enter promo code"
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase())
+                        if (couponError) setCouponError('')
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (couponInput.trim() && !isApplyingCoupon) {
+                            handleApplyCoupon()
+                          }
+                        }
+                      }}
+                      className="w-full h-9 px-3 pr-18 rounded-lg bg-black/50 border border-white/15 text-white text-xs font-mono tracking-wider uppercase placeholder:text-white/35 placeholder:font-sans placeholder:normal-case focus:outline-none focus:border-neon-cyan"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleApplyCoupon()}
+                      disabled={isApplyingCoupon || !couponInput.trim()}
+                      className="absolute right-1 h-7 px-3 rounded-md bg-neon-cyan/20 hover:bg-neon-cyan text-neon-cyan hover:text-black text-[11px] font-bold uppercase tracking-wider disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition-all"
+                    >
+                      {isApplyingCoupon ? '...' : 'Apply'}
+                    </button>
+                  </div>
+
+                  {/* Public Offer Strip */}
+                  {(() => {
+                    const relevant = publicCoupons.find((c) => {
+                      const allowed = c.applicableEvents || ['all']
+                      const current = (eventKey || 'adult').toLowerCase()
+                      return allowed.includes('all') || allowed.includes(current)
+                    })
+                    if (!relevant) return null
+
+                    const discountText =
+                      relevant.discountType === 'percentage'
+                        ? `${relevant.discountValue}% OFF`
+                        : `₹${relevant.discountValue} OFF`
+
+                    return (
+                      <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-dashed border-neon-cyan/30 bg-neon-cyan/[0.04] text-xs">
+                        <span className="text-[11px] text-white/80 truncate">
+                          Use <strong className="font-mono text-neon-cyan">{relevant.code}</strong> for{' '}
+                          <span className="text-neon-cyan font-bold">{discountText}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCouponInput(relevant.code)
+                            handleApplyCoupon(relevant.code)
+                          }}
+                          className="text-[11px] font-bold text-neon-cyan hover:text-white ml-2 cursor-pointer shrink-0"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    )
+                  })()}
+                </>
               )}
 
               {couponError && (
-                <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1">
+                <p className="text-[11px] text-rose-400 flex items-center gap-1">
                   <AlertCircle size={12} />
                   <span>{couponError}</span>
                 </p>
@@ -442,7 +497,7 @@ export default function BookingSection({ onTicketGenerated }) {
               {/* Price Breakdown */}
               <div className="pt-2 border-t border-white/10 space-y-1 text-xs">
                 <div className="flex justify-between text-white/60">
-                  <span>Subtotal ({formData.quantity} pass)</span>
+                  <span>Subtotal ({formData.quantity} {Number(formData.quantity) === 1 ? 'pass' : 'passes'})</span>
                   <span>₹{totalAmount.toLocaleString('en-IN')}</span>
                 </div>
                 {discountAmount > 0 && (
@@ -451,9 +506,18 @@ export default function BookingSection({ onTicketGenerated }) {
                     <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-white font-bold text-sm pt-1 border-t border-white/10">
-                  <span>Total Payable</span>
-                  <span className="text-neon-cyan">₹{finalPayable.toLocaleString('en-IN')}</span>
+                <div className="flex justify-between items-baseline pt-1.5 border-t border-white/10">
+                  <span className="font-bold text-white text-xs uppercase tracking-wider">Total Payable</span>
+                  <div className="text-right">
+                    {discountAmount > 0 && (
+                      <span className="text-[11px] text-white/40 line-through mr-1.5">
+                        ₹{totalAmount.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                    <span className="font-black text-sm text-neon-cyan">
+                      ₹{finalPayable.toLocaleString('en-IN')}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

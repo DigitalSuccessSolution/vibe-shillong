@@ -187,12 +187,6 @@ export function generateTicketEmailHtml(ticket) {
                           🎟️ Qty: ${quantity} Pass • ₹${amountPaid} Paid • Admit One • Non-Transferable
                         </td>
                       </tr>
-                      ${ticket.couponCode ? `
-                      <tr>
-                        <td style="color: #34d399; font-size: 10px; font-weight: 600; padding-top: 2px;">
-                          🏷️ Promo Code: ${ticket.couponCode} applied (-₹${Number(ticket.discountAmount || 0).toLocaleString('en-IN')})
-                        </td>
-                      </tr>` : ''}
                     </table>
 
                     <!-- Status Strip & Barcode -->
@@ -266,7 +260,7 @@ export function generateTicketEmailHtml(ticket) {
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin-top: 14px; text-align: center; font-size: 10px; color: #625977; line-height: 1.55;">
           <tr>
             <td>
-              Need assistance? WhatsApp <span style="font-weight: 600; color: #b5accc;">+91 87318 46927</span> or email vibeshillong@gmail.com
+              Need assistance? WhatsApp <span style="font-weight: 600; color: #b5accc;">+91 82569 85382</span> or email vibeshillong@gmail.com
               <br>
               © 2026 VIBE Shillong. All rights reserved. F Lounge by FTV, Shillong.
             </td>

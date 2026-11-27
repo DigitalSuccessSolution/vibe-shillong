@@ -65,19 +65,29 @@ export default function ContactSection() {
           {/* Quick Contact Info Cards */}
           <div className="space-y-3.5 pt-2">
             {/* Phone & WhatsApp Support */}
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-neon-cyan/40 transition-colors">
-              <div className="w-11 h-11 rounded-xl bg-neon-cyan/15 border border-neon-cyan/30 text-neon-cyan grid place-items-center shrink-0">
-                <Phone size={18} />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/40 transition-colors">
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 grid place-items-center shrink-0">
+                  <Phone size={18} />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-white/40 block">Phone & WhatsApp Support</span>
+                  <a
+                    href="tel:+918256985382"
+                    className="text-sm sm:text-base font-bold text-white hover:text-emerald-400 transition-colors"
+                  >
+                    +91 82569 85382
+                  </a>
+                </div>
               </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-white/40 block">Phone & WhatsApp Support</span>
-                <a
-                  href="tel:+918731846927"
-                  className="text-sm sm:text-base font-bold text-white hover:text-neon-cyan transition-colors"
-                >
-                  +91 87318 46927
-                </a>
-              </div>
+              <a
+                href="https://wa.me/918256985382?text=Hi%2C%20I%20have%20an%20inquiry%20about%20VIBE%20Shillong"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-black border border-emerald-500/40 font-bold text-xs transition-all shadow-[0_0_12px_rgba(37,211,102,0.2)]"
+              >
+                <span>Chat on WhatsApp</span>
+              </a>
             </div>
 
             {/* Direct Email Link */}

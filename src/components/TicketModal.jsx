@@ -210,11 +210,6 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
                   <TicketIcon size={13} className="text-neon-cyan shrink-0" />
                   <span>Qty: {quantity} Pass • Admit One • Non-Transferable</span>
                 </div>
-                {ticket.couponCode && (
-                  <div className="text-[10px] text-emerald-400 font-medium">
-                    🎟️ Promo Code: {ticket.couponCode} applied (-₹{Number(ticket.discountAmount || 0).toLocaleString('en-IN')})
-                  </div>
-                )}
               </div>
 
               {/* Status Badge & Barcode Strip */}

@@ -22,9 +22,18 @@ export default function Footer() {
 
         <div className="flex flex-wrap justify-between items-center gap-4 mt-8 pt-6 text-xs text-[#847d94]">
           <span>© 2026 VIBE Shillong · Event concept</span>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <a href="#/my-bookings" className="text-neon-cyan hover:underline">
               My Booked Passes
+            </a>
+            <span>•</span>
+            <a
+              href="https://wa.me/918256985382"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+            >
+              WhatsApp Support: +91 82569 85382
             </a>
             <span>•</span>
             <span>F Lounge by FTV</span>
