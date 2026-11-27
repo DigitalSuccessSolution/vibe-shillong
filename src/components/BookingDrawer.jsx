@@ -42,29 +42,23 @@ export default function BookingDrawer({
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
   const [couponError, setCouponError] = useState('')
 
-  // Auto-sync user details when logged in or drawer opens
+  // Reset form and coupon state whenever drawer opens fresh
   useEffect(() => {
-    if (user && user.email) {
-      setFormData((prev) => ({
-        ...prev,
-        name: prev.name || user.name || '',
-        email: user.email,
-      }))
+    if (isOpen) {
       setErrorMessage('')
-    } else {
-      // User is logged out -> strictly wipe verified name and email
-      setFormData((prev) => ({
-        ...prev,
-        name: '',
-        email: '',
-      }))
-    }
-  }, [user, isOpen])
+      setCouponError('')
+      setCouponInput('')
+      setAppliedCoupon(null)
 
-  // Clear error message whenever drawer closes or re-opens
-  useEffect(() => {
-    setErrorMessage('')
-  }, [isOpen])
+      setFormData({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: '',
+        event: selectedPackageKey || 'adult',
+        quantity: 1,
+      })
+    }
+  }, [isOpen, selectedPackageKey, user])
 
   // Fetch live packages from database
   useEffect(() => {
@@ -77,13 +71,6 @@ export default function BookingDrawer({
       })
       .catch((err) => console.error('Packages fetch error in drawer:', err))
   }, [])
-
-  // Sync selected package when prop changes or drawer opens
-  useEffect(() => {
-    if (selectedPackageKey) {
-      setFormData((prev) => ({ ...prev, event: selectedPackageKey }))
-    }
-  }, [selectedPackageKey, isOpen])
 
   // Manage body scroll and Escape key
   useEffect(() => {
