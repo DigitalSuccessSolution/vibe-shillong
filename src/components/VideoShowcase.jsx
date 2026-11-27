@@ -4,11 +4,10 @@ import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
 const reels = [
   {
     id: 'reel-1',
-    title: 'Neon Party Highlights',
+    title: 'Neon Nightclub Spectacle',
     category: 'Adult Neon Nights',
     tag: 'Live Reel',
-    poster: '/images/tina/Neon Nightclub Dancefloor Spectacle.png',
-    src: 'https://drive.google.com/file/d/1spIM4U9t1OaUkpLT02jFjPL98fVzKEd2/preview',
+    src: '/videos/IMG_9349.MP4',
     views: '24.8K',
   },
   {
@@ -16,45 +15,32 @@ const reels = [
     title: 'UV Dancefloor Rave',
     category: 'Adult Neon Nights',
     tag: 'Club Energy',
-    poster: '/images/tina/UV Neon Dance Floor Celebration.png',
-    src: '/videos/reel-2.mp4',
-    views: '12.9K',
+    src: '/videos/IMG_9350.MP4',
+    views: '18.4K',
   },
   {
     id: 'reel-3',
-    title: 'Glow Stick Dance Battle',
-    category: 'Kids Carnival',
-    tag: 'Family Fun',
-    poster: '/images/tina/Neon Glowstick Dance Party.png',
-    src: '/videos/reel-3.mp4',
-    views: '9.2K',
+    title: 'DJ & Neon Glow Vibe',
+    category: 'Adult Neon Nights',
+    tag: 'Crowd Hype',
+    src: '/videos/IMG_9351.MP4',
+    views: '21.2K',
   },
   {
     id: 'reel-4',
-    title: 'Neon Runway Fashion Show',
+    title: 'VIP Lounge Experience',
     category: 'Adult Neon Nights',
-    tag: 'Glow Looks',
-    poster: '/images/tina/Neon Runway Fashion Show.png',
-    src: '/videos/reel-4.mp4',
-    views: '15.1K',
+    tag: 'VIP Moments',
+    src: '/videos/IMG_9352.MP4',
+    views: '15.9K',
   },
   {
     id: 'reel-5',
-    title: 'Kids Face Painting Craze',
-    category: 'Kids Carnival',
-    tag: 'Glow Art',
-    poster: '/images/tina/Neon Cat Face Painting Fun.png',
-    src: '/videos/reel-5.mp4',
-    views: '11.3K',
-  },
-  {
-    id: 'reel-6',
-    title: 'Family Glow Celebration',
-    category: 'Kids Carnival',
-    tag: 'Carnival Vibe',
-    poster: '/images/tina/Neon Family Glow Party.png',
-    src: '/videos/reel-6.mp4',
-    views: '14.7K',
+    title: 'Festival Glow Celebration',
+    category: 'Adult Neon Nights',
+    tag: 'Aftermovie',
+    src: '/videos/IMG_9353.MP4',
+    views: '19.7K',
   },
 ]
 
@@ -152,21 +138,23 @@ export default function VideoShowcase() {
                         controls
                         autoPlay
                         playsInline
+                        loop
                       />
                     )
                   ) : null}
                 </div>
               ) : (
-                /* Clean Full-Bleed Thumbnail with Glowing Center Play Button (No hover zoom/effects) */
+                /* Real Video Preview with Glowing Center Play Button (No static images) */
                 <>
-                  <img
-                    src={reel.poster}
-                    alt={reel.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
+                  <video
+                    src={`${reel.src}#t=0.001`}
+                    preload="metadata"
+                    className="w-full h-full object-cover pointer-events-none"
+                    playsInline
+                    muted
                   />
 
-                  <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/10">
+                  <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/15">
                     <div className="w-14 sm:w-16 h-14 sm:h-16 rounded-full bg-neon-pink text-[#080612] flex items-center justify-center pl-1 shadow-[0_0_25px_rgba(255,53,196,0.6)]">
                       <Play size={24} fill="currentColor" />
                     </div>
