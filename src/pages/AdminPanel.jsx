@@ -13,6 +13,7 @@ import AttendeesPage from './admin/AttendeesPage'
 import AnalyticsPage from './admin/AnalyticsPage'
 import PackagesPage from './admin/PackagesPage'
 import InquiriesPage from './admin/InquiriesPage'
+import CouponsPage from './admin/CouponsPage'
 import { API_BASE_URL, ADMIN_ROUTE_PATH } from '../config/api'
 
 export default function AdminPanel() {
@@ -35,6 +36,7 @@ export default function AdminPanel() {
     if (full.includes('transactions')) return 'transactions'
     if (full.includes('attendees')) return 'attendees'
     if (full.includes('packages')) return 'packages'
+    if (full.includes('coupons')) return 'coupons'
     if (full.includes('inquiries')) return 'inquiries'
     if (full.includes('analytics')) return 'analytics'
     return 'scanner'
@@ -244,6 +246,7 @@ export default function AdminPanel() {
     transactions: 'Payment Transactions & Orders',
     attendees: 'Attendee Database Ledger',
     packages: 'Ticket Packages & Pricing',
+    coupons: 'Promo Codes & Influencer Coupons',
     inquiries: 'Contact Form Leads & Inquiries',
     analytics: 'Analytics & Pass Distribution',
   }
@@ -322,6 +325,10 @@ export default function AdminPanel() {
 
           {activeNav === 'packages' && (
             <PackagesPage />
+          )}
+
+          {activeNav === 'coupons' && (
+            <CouponsPage />
           )}
 
           {activeNav === 'inquiries' && (

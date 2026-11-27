@@ -1,4 +1,4 @@
-import { QrCode, Ticket, TrendingUp, Tag, CreditCard, LogOut, ExternalLink, X, MessageSquare } from 'lucide-react'
+import { QrCode, Ticket, TrendingUp, Tag, CreditCard, LogOut, ExternalLink, X, MessageSquare, Percent } from 'lucide-react'
 import { ADMIN_ROUTE_PATH } from '../../config/api'
 
 export default function AdminSidebar({
@@ -15,6 +15,7 @@ export default function AdminSidebar({
     { id: 'attendees', label: 'Booked Tickets', icon: Ticket, path: `/${ADMIN_ROUTE_PATH}/attendees` },
     { id: 'transactions', label: 'Transactions', icon: CreditCard, path: `/${ADMIN_ROUTE_PATH}/transactions` },
     { id: 'packages', label: 'Ticket Packages', icon: Tag, path: `/${ADMIN_ROUTE_PATH}/packages` },
+    { id: 'coupons', label: 'Coupons & Promo', icon: Percent, path: `/${ADMIN_ROUTE_PATH}/coupons` },
     { id: 'inquiries', label: 'Inquiries & Leads', icon: MessageSquare, path: `/${ADMIN_ROUTE_PATH}/inquiries` },
     { id: 'analytics', label: 'Analytics & Stats', icon: TrendingUp, path: `/${ADMIN_ROUTE_PATH}/analytics` },
   ]

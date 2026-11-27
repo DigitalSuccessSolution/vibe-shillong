@@ -43,6 +43,20 @@ const ticketSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    originalAmount: {
+      type: Number,
+      default: 0,
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+    },
+    couponCode: {
+      type: String,
+      default: null,
+      trim: true,
+      uppercase: true,
+    },
     paymentId: {
       type: String,
       default: 'OFFLINE_OR_MANUAL',

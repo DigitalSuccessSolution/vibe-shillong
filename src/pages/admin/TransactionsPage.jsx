@@ -251,6 +251,8 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
       'Pass Type',
       'Quantity',
       'Amount (INR)',
+      'Coupon Code',
+      'Discount (INR)',
       'Payment Mode',
       'Status',
       'Failure / Refund Note',
@@ -270,6 +272,8 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
         t.eventType || '',
         t.quantity || 1,
         t.amount || 0,
+        t.couponCode || '',
+        t.discountAmount || 0,
         t.paymentMode || 'Online UPI',
         t.status || 'SUCCESS',
         `"${(t.failureReason || (t.refundAmount ? `Refund: ₹${t.refundAmount}` : '') || '').replace(/"/g, '""')}"`,
@@ -532,10 +536,15 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                         >
                           ₹{Number(tx.amount || 0).toLocaleString('en-IN')}
                         </span>
-                        <div className="mt-1">
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                           <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-white/5 border border-white/10 text-white/70">
                             {tx.paymentMode || 'UPI'}
                           </span>
+                          {tx.couponCode && (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                              🏷️ {tx.couponCode}
+                            </span>
+                          )}
                         </div>
                       </td>
 

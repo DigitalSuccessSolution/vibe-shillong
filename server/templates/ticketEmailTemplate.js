@@ -187,6 +187,12 @@ export function generateTicketEmailHtml(ticket) {
                           🎟️ Qty: ${quantity} Pass • ₹${amountPaid} Paid • Admit One • Non-Transferable
                         </td>
                       </tr>
+                      ${ticket.couponCode ? `
+                      <tr>
+                        <td style="color: #34d399; font-size: 10px; font-weight: 600; padding-top: 2px;">
+                          🏷️ Promo Code: ${ticket.couponCode} applied (-₹${Number(ticket.discountAmount || 0).toLocaleString('en-IN')})
+                        </td>
+                      </tr>` : ''}
                     </table>
 
                     <!-- Status Strip & Barcode -->

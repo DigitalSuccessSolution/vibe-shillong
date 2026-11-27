@@ -116,6 +116,8 @@ export default function AttendeesPage({
       'Pass Type',
       'Quantity',
       'Amount Paid',
+      'Coupon Code',
+      'Discount',
       'Payment Mode',
       'Status',
       'Booked Date',
@@ -135,6 +137,8 @@ export default function AttendeesPage({
         t.eventType || '',
         t.quantity || 1,
         t.amountPaid || 0,
+        t.couponCode || '',
+        t.discountAmount || 0,
         t.paymentMode || '',
         t.status || 'VALID',
         bookedDt?.date || '',
@@ -369,6 +373,12 @@ export default function AttendeesPage({
                         <CreditCard size={11} />
                         <span>{t.paymentMode || 'Online UPI'} • ₹{t.amountPaid}</span>
                       </div>
+                      {t.couponCode && (
+                        <div className="text-[10px] text-emerald-400 font-mono font-bold mt-0.5 flex items-center gap-1">
+                          <span>🏷️ {t.couponCode}</span>
+                          <span className="text-white/40">(-₹{t.discountAmount})</span>
+                        </div>
+                      )}
                     </td>
 
                     {/* Booked Date & Time */}

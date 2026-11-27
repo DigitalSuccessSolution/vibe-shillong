@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Check, Lock, Minus, Plus, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react'
+import { X, Check, Lock, Minus, Plus, ShieldCheck, Sparkles, AlertCircle, Tag } from 'lucide-react'
 import { API_BASE_URL } from '../config/api'
 import { DEFAULT_PACKAGES } from '../constants/packages'
 import { useAuth, GoogleIcon } from '../context/AuthContext'
@@ -35,6 +35,12 @@ export default function BookingDrawer({
     event: selectedPackageKey || 'adult',
     quantity: 1,
   })
+
+  // Coupon / Promo Code State
+  const [couponInput, setCouponInput] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState(null)
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false)
+  const [couponError, setCouponError] = useState('')
 
   // Auto-sync user details when logged in or drawer opens
   useEffect(() => {
@@ -96,13 +102,97 @@ export default function BookingDrawer({
     }
   }, [isOpen, onClose])
 
-  if (!isOpen) return null
-
   // Calculate live pricing
   const selectedPkg = packages.find((p) => p.key === formData.event) || packages[0] || {}
   const pricePerTicket = Number(selectedPkg.price) || 0
   const quantity = Math.max(1, Number(formData.quantity) || 1)
   const totalAmount = pricePerTicket * quantity
+  const discountAmount = appliedCoupon ? Number(appliedCoupon.discountAmount) || 0 : 0
+  const finalPayable = Math.max(0, totalAmount - discountAmount)
+
+  // Validate applied coupon whenever event tier or total amount changes!
+  useEffect(() => {
+    if (!isOpen || !appliedCoupon) return
+
+    const allowed = appliedCoupon.applicableEvents || ['all']
+    const currentEvent = (formData.event || 'adult').toLowerCase()
+    const isEventAllowed = allowed.includes('all') || allowed.includes(currentEvent)
+
+    // 1. If user switched to an event tier this coupon is NOT allowed for:
+    if (!isEventAllowed) {
+      setCouponError(
+        `Coupon "${appliedCoupon.code}" was removed because it is only valid for ${allowed.join(', ').toUpperCase()} passes.`
+      )
+      setAppliedCoupon(null)
+      return
+    }
+
+    // 2. If user decreased quantity below minimum order amount:
+    if (appliedCoupon.minOrderAmount && totalAmount < appliedCoupon.minOrderAmount) {
+      setCouponError(
+        `Coupon "${appliedCoupon.code}" was removed because the minimum purchase is ₹${appliedCoupon.minOrderAmount.toLocaleString('en-IN')}.`
+      )
+      setAppliedCoupon(null)
+      return
+    }
+
+    // 3. If still valid, recalculate discount
+    if (appliedCoupon.discountType === 'percentage') {
+      let recalculated = Math.round((totalAmount * appliedCoupon.discountValue) / 100)
+      if (appliedCoupon.maxDiscount && recalculated > appliedCoupon.maxDiscount) {
+        recalculated = appliedCoupon.maxDiscount
+      }
+      setAppliedCoupon((prev) => (prev ? { ...prev, discountAmount: recalculated } : null))
+    }
+  }, [formData.event, totalAmount, isOpen])
+
+  const handleApplyCoupon = async () => {
+    const clean = (couponInput || '').trim().toUpperCase()
+    if (!clean) return
+
+    setIsApplyingCoupon(true)
+    setCouponError('')
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: clean,
+          orderAmount: totalAmount,
+          eventType: formData.event,
+        }),
+      })
+      const data = await res.json()
+
+      if (res.ok && data.success && data.valid) {
+        setAppliedCoupon({
+          code: data.coupon.code,
+          discountAmount: data.discountAmount,
+          discountType: data.coupon.discountType,
+          discountValue: data.coupon.discountValue,
+          maxDiscount: data.coupon.maxDiscount,
+          applicableEvents: data.coupon.applicableEvents || ['all'],
+          minOrderAmount: data.coupon.minOrderAmount || 0,
+          message: data.message,
+        })
+        setCouponError('')
+      } else {
+        setCouponError(data.message || 'Invalid coupon code')
+        setAppliedCoupon(null)
+      }
+    } catch (err) {
+      setCouponError('Network error checking coupon')
+    } finally {
+      setIsApplyingCoupon(false)
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponInput('')
+    setCouponError('')
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -147,6 +237,7 @@ export default function BookingDrawer({
           customerEmail: verifiedEmail,
           customerPhone: fullPhone,
           quantity: quantity,
+          couponCode: appliedCoupon?.code || '',
         }),
       })
       const orderData = await orderRes.json()
@@ -174,7 +265,10 @@ export default function BookingDrawer({
                 customerEmail: verifiedEmail,
                 eventType: formData.event,
                 quantity: quantity,
-                amountPaid: totalAmount,
+                amountPaid: finalPayable,
+                originalAmount: totalAmount,
+                discountAmount: discountAmount,
+                couponCode: appliedCoupon?.code || null,
               }),
             })
             const verifyData = await verifyRes.json()
@@ -183,7 +277,7 @@ export default function BookingDrawer({
               // Trigger Meta Pixel Purchase Event
               if (typeof window !== 'undefined' && window.fbq) {
                 window.fbq('track', 'Purchase', {
-                  value: totalAmount,
+                  value: finalPayable,
                   currency: 'INR',
                   content_name: selectedPkg?.title || formData.event,
                   content_type: 'event_ticket',
@@ -241,7 +335,10 @@ export default function BookingDrawer({
                 customerEmail: verifiedEmail,
                 eventType: formData.event,
                 quantity: quantity,
-                amountPaid: totalAmount,
+                amountPaid: finalPayable,
+                originalAmount: totalAmount,
+                discountAmount: discountAmount,
+                couponCode: appliedCoupon?.code || null,
               }),
             })
             const verifyData = await verifyRes.json()
@@ -250,7 +347,7 @@ export default function BookingDrawer({
               // Trigger Meta Pixel Purchase Event
               if (typeof window !== 'undefined' && window.fbq) {
                 window.fbq('track', 'Purchase', {
-                  value: totalAmount,
+                  value: finalPayable,
                   currency: 'INR',
                   content_name: selectedPkg?.title || formData.event,
                   content_type: 'event_ticket',
@@ -286,6 +383,8 @@ export default function BookingDrawer({
       setLoading(false)
     }
   }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -558,6 +657,92 @@ export default function BookingDrawer({
                 </span>
               </div>
             </div>
+
+            {/* Promo Code / Coupon Section */}
+            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                  <Tag size={13} className="text-neon-cyan" />
+                  <span>Have a Promo Code?</span>
+                </label>
+                {appliedCoupon && (
+                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles size={11} /> Applied
+                  </span>
+                )}
+              </div>
+
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-xs">
+                      ✓
+                    </div>
+                    <div>
+                      <span className="font-mono font-bold text-xs text-emerald-300 block">
+                        {appliedCoupon.code}
+                      </span>
+                      <span className="text-[10px] text-emerald-400/80 block">
+                        {appliedCoupon.message || `Saved ₹${discountAmount.toLocaleString('en-IN')}`}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="text-[11px] text-white/50 hover:text-rose-400 font-bold px-2 py-1 rounded cursor-pointer transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter code (e.g. ROHIT10)"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value.toUpperCase())
+                      if (couponError) setCouponError('')
+                    }}
+                    className="flex-1 h-10 px-3 rounded-xl bg-black/50 border border-white/15 text-white text-xs font-mono tracking-wider uppercase focus:outline-none focus:border-neon-cyan"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    disabled={isApplyingCoupon || !couponInput.trim()}
+                    className="h-10 px-4 rounded-xl bg-white/10 hover:bg-neon-cyan hover:text-[#071016] text-white text-xs font-bold transition-all disabled:opacity-40 cursor-pointer"
+                  >
+                    {isApplyingCoupon ? 'Checking...' : 'Apply'}
+                  </button>
+                </div>
+              )}
+
+              {couponError && (
+                <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} />
+                  <span>{couponError}</span>
+                </p>
+              )}
+
+              {/* Price Breakdown */}
+              <div className="pt-2 border-t border-white/10 space-y-1 text-xs">
+                <div className="flex justify-between text-white/60">
+                  <span>Subtotal ({quantity} {quantity === 1 ? 'pass' : 'passes'})</span>
+                  <span>₹{totalAmount.toLocaleString('en-IN')}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-400 font-medium">
+                    <span>Discount ({appliedCoupon?.code})</span>
+                    <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-white font-bold text-sm pt-1 border-t border-white/10">
+                  <span>Total Payable</span>
+                  <span className="text-neon-cyan">₹{finalPayable.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {errorMessage && (
@@ -591,7 +776,7 @@ export default function BookingDrawer({
               ) : (
                 <>
                   <Lock size={16} className="shrink-0" />
-                  <span>Proceed to Pay ₹{totalAmount.toLocaleString('en-IN')}</span>
+                  <span>Proceed to Pay ₹{finalPayable.toLocaleString('en-IN')}</span>
                 </>
               )}
             </button>

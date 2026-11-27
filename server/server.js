@@ -9,6 +9,7 @@ import ticketRoutes from './routes/ticketRoutes.js'
 import packageRoutes from './routes/packageRoutes.js'
 import contactRoutes from './routes/contactRoutes.js'
 import transactionRoutes from './routes/transactionRoutes.js'
+import couponRoutes from './routes/couponRoutes.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -40,6 +41,7 @@ app.use('/api/tickets', ticketRoutes)
 app.use('/api/packages', packageRoutes)
 app.use('/api/contact', contactRoutes)
 app.use('/api/transactions', transactionRoutes)
+app.use('/api/coupons', couponRoutes)
 
 // Start Server
 app.listen(PORT, () => {

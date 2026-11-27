@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import Razorpay from 'razorpay'
 import Ticket from '../models/Ticket.js'
 import Transaction from '../models/Transaction.js'
+import Coupon from '../models/Coupon.js'
 import { sendTicketEmail } from '../utils/emailService.js'
 
 const router = express.Router()
@@ -206,13 +207,48 @@ router.post('/book', async (req, res) => {
  */
 router.post('/create-order', async (req, res) => {
   try {
-    const { amount, eventType, customerName, customerEmail, customerPhone, quantity } = req.body
+    const { amount, eventType, customerName, customerEmail, customerPhone, quantity, couponCode } = req.body
     if (!amount || Number(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'Valid amount is required.' })
     }
 
+    let finalPayable = Math.max(1, Number(amount) || 0)
+    let appliedDiscount = 0
+    let validCouponCode = null
+
+    // Server-side strict coupon verification (prevents price manipulation)
+    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
+      try {
+        const cleanCode = couponCode.trim().toUpperCase()
+        const couponDoc = await Coupon.findOne({ code: cleanCode, isActive: true })
+        if (couponDoc) {
+          const notExpired = !couponDoc.validTill || new Date() <= new Date(couponDoc.validTill)
+          const withinLimit = !couponDoc.usageLimit || couponDoc.usedCount < couponDoc.usageLimit
+          const meetsMin = !couponDoc.minOrderAmount || finalPayable >= couponDoc.minOrderAmount
+          const eventMatch =
+            couponDoc.applicableEvents.includes('all') ||
+            couponDoc.applicableEvents.includes((eventType || '').toLowerCase())
+
+          if (notExpired && withinLimit && meetsMin && eventMatch) {
+            if (couponDoc.discountType === 'percentage') {
+              appliedDiscount = Math.round((finalPayable * couponDoc.discountValue) / 100)
+              if (couponDoc.maxDiscount && appliedDiscount > couponDoc.maxDiscount) {
+                appliedDiscount = couponDoc.maxDiscount
+              }
+            } else {
+              appliedDiscount = Math.min(couponDoc.discountValue, finalPayable)
+            }
+            finalPayable = Math.max(1, finalPayable - appliedDiscount)
+            validCouponCode = couponDoc.code
+          }
+        }
+      } catch (cErr) {
+        console.warn('[Coupon verification in create-order]:', cErr.message)
+      }
+    }
+
     const options = {
-      amount: Math.round(Number(amount) * 100), // paise
+      amount: Math.round(finalPayable * 100), // paise
       currency: 'INR',
       receipt: `rcpt_${Date.now()}`,
       notes: {
@@ -221,6 +257,9 @@ router.post('/create-order', async (req, res) => {
         customerEmail: customerEmail || '',
         customerPhone: customerPhone || '',
         quantity: String(quantity || 1),
+        couponCode: validCouponCode || '',
+        discountAmount: String(appliedDiscount),
+        originalAmount: String(amount),
       },
     }
 
@@ -301,6 +340,9 @@ router.post('/verify-payment', async (req, res) => {
       eventType,
       quantity = 1,
       amountPaid = 0,
+      couponCode = null,
+      discountAmount = 0,
+      originalAmount = 0,
     } = req.body
 
     if (!customerName || !customerPhone || !customerEmail || !eventType) {
@@ -396,6 +438,9 @@ router.post('/verify-payment', async (req, res) => {
       eventTitle: eventTitles[eventType] || 'Neon Event Pass',
       quantity: Number(quantity) || 1,
       amountPaid: Number(amountPaid) || 0,
+      originalAmount: Number(originalAmount) || Number(amountPaid) || 0,
+      discountAmount: Number(discountAmount) || 0,
+      couponCode: couponCode ? String(couponCode).trim().toUpperCase() : null,
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id,
       paymentMode: resolvedPaymentMode,
@@ -403,6 +448,14 @@ router.post('/verify-payment', async (req, res) => {
     })
 
     const savedTicket = await newTicket.save()
+
+    // Increment coupon used count if a valid coupon was applied
+    if (savedTicket.couponCode) {
+      Coupon.findOneAndUpdate(
+        { code: savedTicket.couponCode },
+        { $inc: { usedCount: 1 } }
+      ).catch((cErr) => console.warn('[Coupon count increment error]:', cErr.message))
+    }
 
     // Record Transaction in Transaction Collection
     await Transaction.create({
@@ -416,6 +469,9 @@ router.post('/verify-payment', async (req, res) => {
       eventType: savedTicket.eventType,
       quantity: savedTicket.quantity,
       amount: savedTicket.amountPaid,
+      originalAmount: savedTicket.originalAmount,
+      discountAmount: savedTicket.discountAmount,
+      couponCode: savedTicket.couponCode,
       currency: 'INR',
       paymentGateway: 'Razorpay',
       paymentMode: resolvedPaymentMode,
@@ -498,6 +554,9 @@ router.post('/webhook', async (req, res) => {
       const eventType = notes.eventType || 'adult'
       const amountPaid = (paymentEntity.amount || orderEntity.amount_paid || 0) / 100
       const quantity = Number(notes.quantity) || 1
+      const couponCode = notes.couponCode ? String(notes.couponCode).trim().toUpperCase() : null
+      const discountAmount = Number(notes.discountAmount) || 0
+      const originalAmount = Number(notes.originalAmount) || amountPaid
 
       const eventTitles = {
         kids: 'Kids Neon Carnival (12 PM - 7:30 PM)',
@@ -518,6 +577,9 @@ router.post('/webhook', async (req, res) => {
         eventTitle: eventTitles[eventType] || 'Neon Event Pass',
         quantity,
         amountPaid,
+        originalAmount,
+        discountAmount,
+        couponCode,
         paymentId,
         orderId,
         paymentMode: resolvedPaymentMode,
@@ -526,6 +588,13 @@ router.post('/webhook', async (req, res) => {
 
       const savedTicket = await newTicket.save()
       console.log(`[Webhook] Ticket ${ticketId} issued automatically for ${customerEmail}`)
+
+      if (savedTicket.couponCode) {
+        Coupon.findOneAndUpdate(
+          { code: savedTicket.couponCode },
+          { $inc: { usedCount: 1 } }
+        ).catch((cErr) => console.warn('[Webhook Coupon increment error]:', cErr.message))
+      }
 
       // Record Transaction
       await Transaction.create({
@@ -539,6 +608,9 @@ router.post('/webhook', async (req, res) => {
         eventType: savedTicket.eventType,
         quantity: savedTicket.quantity,
         amount: savedTicket.amountPaid,
+        originalAmount: savedTicket.originalAmount,
+        discountAmount: savedTicket.discountAmount,
+        couponCode: savedTicket.couponCode,
         currency: 'INR',
         paymentGateway: 'Razorpay',
         paymentMode: resolvedPaymentMode,

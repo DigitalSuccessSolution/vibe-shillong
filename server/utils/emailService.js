@@ -38,7 +38,7 @@ Event: ${ticket.eventTitle || ticket.eventType} Pass
 Date: Saturday, 12 December 2026
 Venue: F Lounge by FTV, Shillong
 Quantity: ${ticket.quantity || 1} Attendee(s)
-Amount Paid: ₹${Number(ticket.amountPaid || 0).toLocaleString('en-IN')}
+Amount Paid: ₹${Number(ticket.amountPaid || 0).toLocaleString('en-IN')}${ticket.couponCode ? ` (Promo: ${ticket.couponCode} applied - Saved ₹${ticket.discountAmount})` : ''}
 Status: CONFIRMED / VALID
 
 Please present the QR code in this email at the gate scanner for entry.
