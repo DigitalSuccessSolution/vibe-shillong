@@ -15,9 +15,11 @@ import {
   Pencil,
 } from 'lucide-react'
 import { API_BASE_URL } from '../../config/api'
+import { DEFAULT_PACKAGES } from '../../constants/packages'
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState([])
+  const [packages, setPackages] = useState(DEFAULT_PACKAGES)
   const [loading, setLoading] = useState(true)
   const [copiedCode, setCopiedCode] = useState(null)
   const [statusMessage, setStatusMessage] = useState('')
@@ -87,8 +89,21 @@ export default function CouponsPage() {
     }
   }
 
+  const fetchPackages = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/packages`)
+      const data = await res.json()
+      if (data.success && Array.isArray(data.packages) && data.packages.length > 0) {
+        setPackages(data.packages)
+      }
+    } catch (err) {
+      console.error('Error fetching packages in coupons:', err)
+    }
+  }
+
   useEffect(() => {
     fetchCoupons()
+    fetchPackages()
   }, [])
 
   const handleCopy = (code) => {
@@ -433,7 +448,14 @@ export default function CouponsPage() {
                       <span className="capitalize text-white/60">
                         {coupon.applicableEvents?.includes('all')
                           ? 'All Events'
-                          : coupon.applicableEvents?.join(', ')}
+                          : coupon.applicableEvents
+                              ?.map((key) => {
+                                const found = packages.find(
+                                  (p) => p.key?.toLowerCase() === key?.toLowerCase()
+                                )
+                                return found ? found.title : key
+                              })
+                              .join(', ')}
                       </span>
                     </td>
 
@@ -640,10 +662,12 @@ export default function CouponsPage() {
                   onChange={(e) => setFormData({ ...formData, applicableEvents: [e.target.value] })}
                   className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white text-xs focus:outline-none focus:border-neon-cyan"
                 >
-                  <option value="all">All Passes (Kids, Adult & VIP)</option>
-                  <option value="adult">Adult Passes Only</option>
-                  <option value="kids">Kids Carnival Passes Only</option>
-                  <option value="vip">VIP Passes Only</option>
+                  <option value="all">All Passes (Applicable to Any Pass)</option>
+                  {packages.map((pkg) => (
+                    <option key={pkg.key || pkg._id} value={pkg.key}>
+                      {pkg.title || pkg.key.toUpperCase()} (₹{pkg.price})
+                    </option>
+                  ))}
                 </select>
               </div>
 

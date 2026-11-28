@@ -125,6 +125,15 @@ export default function MyPassesModal({ isOpen, onClose, onSelectTicket, onOpenB
                   ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/40'
                   : 'bg-neon-pink/20 text-neon-pink border-neon-pink/40'
 
+              const passTitle = (() => {
+                if (t.eventTitle) {
+                  const stripped = t.eventTitle.replace(/\s*\([^)]*\)/g, '').replace(/[_-]+/g, ' ').trim()
+                  if (stripped) return stripped.toLowerCase().endsWith('pass') ? stripped : `${stripped} Pass`
+                }
+                const clean = (t.eventType || 'adult').replace(/[_-]+/g, ' ').trim()
+                return clean.toLowerCase().endsWith('pass') ? clean : `${clean} Pass`
+              })()
+
               return (
                 <div
                   key={t.ticketId}
@@ -132,8 +141,8 @@ export default function MyPassesModal({ isOpen, onClose, onSelectTicket, onOpenB
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
-                        {t.eventType} Pass
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
+                        {passTitle}
                       </span>
                       {isUsed ? (
                         <span className="text-[10px] text-emerald-400 flex items-center gap-1">

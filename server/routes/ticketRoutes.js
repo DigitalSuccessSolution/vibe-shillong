@@ -78,11 +78,13 @@ router.use((req, res, next) => {
   next()
 })
 
-// Helper to generate unique ticket ID (e.g. NEON-7829-K)
+// Helper to generate unique ticket ID (e.g. GIRLS-5660-1UR, ADULT-1234-XYZ)
 function generateTicketId(prefix = 'NEON') {
+  const firstWord = (prefix || 'NEON').split(/[-_\s]+/)[0] || 'NEON'
+  const cleanPrefix = firstWord.replace(/[^A-Za-z0-9]/g, '').slice(0, 5).toUpperCase() || 'NEON'
   const randomNum = Math.floor(1000 + Math.random() * 9000)
   const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase()
-  return `${prefix}-${randomNum}-${randomChars}`.toUpperCase()
+  return `${cleanPrefix}-${randomNum}-${randomChars}`.toUpperCase()
 }
 
 // Helper to resolve human-readable payment method (UPI, Card, Netbanking, Wallet, Cash)
@@ -902,6 +904,36 @@ router.get('/', async (req, res) => {
 router.get('/:ticketId/pass', (req, res) => {
   const cleanId = (req.params.ticketId || '').trim().toUpperCase()
   return res.redirect(`https://vibeshillong.com/?ticket=${cleanId}`)
+})
+
+/**
+ * 6. Delete a Ticket (Admin)
+ * DELETE /api/tickets/:id
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const q = req.params.id.trim()
+    const isValidId = mongoose.Types.ObjectId.isValid(q)
+    const deleted = await Ticket.findOneAndDelete({
+      $or: [
+        { ticketId: q.toUpperCase() },
+        ...(isValidId ? [{ _id: q }] : []),
+      ],
+    })
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Ticket not found.' })
+    }
+
+    return res.json({
+      success: true,
+      message: `Ticket "${deleted.ticketId}" deleted successfully.`,
+      deleted,
+    })
+  } catch (error) {
+    console.error('Delete Ticket Error:', error)
+    return res.status(500).json({ success: false, message: error.message })
+  }
 })
 
 export default router

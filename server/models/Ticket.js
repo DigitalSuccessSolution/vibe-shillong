@@ -27,8 +27,8 @@ const ticketSchema = new mongoose.Schema(
     },
     eventType: {
       type: String,
-      enum: ['kids', 'adult', 'vip'],
       required: true,
+      trim: true,
     },
     eventTitle: {
       type: String,

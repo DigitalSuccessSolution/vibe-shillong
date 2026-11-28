@@ -20,12 +20,14 @@ import {
   ChevronDown,
   Copy,
   Check,
+  Trash2,
 } from 'lucide-react'
 import TicketModal from '../../components/TicketModal'
 import Pagination from '../../components/admin/Pagination'
 import DateFilter, { matchesDateFilter } from '../../components/admin/DateFilter'
 import { useDebounce } from '../../hooks/useDebounce'
 import { API_BASE_URL } from '../../config/api'
+import { DEFAULT_PACKAGES } from '../../constants/packages'
 
 export default function AttendeesPage({
   ticketsList: propTickets = [],
@@ -33,8 +35,10 @@ export default function AttendeesPage({
   loading: propLoading = false,
 }) {
   const [localTickets, setLocalTickets] = useState([])
+  const [packages, setPackages] = useState(DEFAULT_PACKAGES)
   const [internalLoading, setInternalLoading] = useState(false)
   const [attendeeFilter, setAttendeeFilter] = useState('all') // 'all' | 'USED' | 'VALID' | 'CANCELLED'
+  const [passFilter, setPassFilter] = useState('all')
   const [datePreset, setDatePreset] = useState('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -44,6 +48,10 @@ export default function AttendeesPage({
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [previewTicket, setPreviewTicket] = useState(null)
   const [copiedId, setCopiedId] = useState('')
+
+  // Delete Ticket State
+  const [ticketToDelete, setTicketToDelete] = useState(null)
+  const [isDeletingTicket, setIsDeletingTicket] = useState(false)
 
   const copyToClipboard = (text, key) => {
     if (!text) return
@@ -75,9 +83,17 @@ export default function AttendeesPage({
     }
   }, [propTickets])
 
-  // Automatically fetch live real-time tickets from MongoDB as soon as Attendee page opens
+  // Automatically fetch live real-time tickets and packages from MongoDB
   useEffect(() => {
     handleRefresh()
+    fetch(`${API_BASE_URL}/api/packages`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.packages) && data.packages.length > 0) {
+          setPackages(data.packages)
+        }
+      })
+      .catch((err) => console.error('Error fetching packages in attendees:', err))
   }, [])
 
   const ticketsList = localTickets.length > 0 ? localTickets : propTickets
@@ -98,6 +114,37 @@ export default function AttendeesPage({
       console.error('Refresh booked tickets error:', err)
     } finally {
       setInternalLoading(false)
+    }
+  }
+
+  // Delete Booked Ticket
+  const handleDeleteTicket = async () => {
+    if (!ticketToDelete) return
+    setIsDeletingTicket(true)
+    try {
+      const id = ticketToDelete._id || ticketToDelete.ticketId
+      const res = await fetch(`${API_BASE_URL}/api/tickets/${id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (data.success) {
+        setLocalTickets((prev) =>
+          prev.filter((t) => t._id !== ticketToDelete._id && t.ticketId !== ticketToDelete.ticketId)
+        )
+        if (
+          selectedTicket &&
+          (selectedTicket._id === ticketToDelete._id || selectedTicket.ticketId === ticketToDelete.ticketId)
+        ) {
+          setSelectedTicket(null)
+        }
+        setTicketToDelete(null)
+      } else {
+        alert(data.message || 'Error deleting ticket.')
+      }
+    } catch (err) {
+      alert('Delete failed: ' + err.message)
+    } finally {
+      setIsDeletingTicket(false)
     }
   }
 
@@ -169,6 +216,8 @@ export default function AttendeesPage({
   const filteredAttendees = ticketsList.filter((t) => {
     const matchesFilter =
       attendeeFilter === 'all' ? true : t.status === attendeeFilter
+    const matchesPass =
+      passFilter === 'all' ? true : t.eventType?.toLowerCase() === passFilter?.toLowerCase()
     const q = debouncedSearchQuery.toLowerCase().trim()
     const matchesSearch =
       !q ||
@@ -177,13 +226,13 @@ export default function AttendeesPage({
       (t.customerPhone || '').includes(q) ||
       (t.customerEmail || '').toLowerCase().includes(q)
     const matchesDate = matchesDateFilter(t.createdAt, datePreset, startDate, endDate)
-    return matchesFilter && matchesSearch && matchesDate
+    return matchesFilter && matchesPass && matchesSearch && matchesDate
   })
 
   // Automatically reset to page 1 whenever search query, filter, date range, or page size changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearchQuery, attendeeFilter, pageSize, datePreset, startDate, endDate])
+  }, [debouncedSearchQuery, attendeeFilter, passFilter, pageSize, datePreset, startDate, endDate])
 
   // Paginated slice
   const paginatedAttendees = filteredAttendees.slice(
@@ -256,10 +305,27 @@ export default function AttendeesPage({
               onChange={(e) => setAttendeeFilter(e.target.value)}
               className="h-9 appearance-none pl-3 pr-7 bg-black/60 border border-white/15 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-neon-cyan cursor-pointer hover:bg-white/5 transition-all"
             >
-              <option value="all" className="bg-[#0f091f] text-white">All Passes ({totalSold})</option>
+              <option value="all" className="bg-[#0f091f] text-white">All Status ({totalSold})</option>
               <option value="USED" className="bg-[#0f091f] text-emerald-300">Checked-In ({totalScanned})</option>
               <option value="VALID" className="bg-[#0f091f] text-amber-300">Valid / Pending ({totalPending})</option>
               <option value="CANCELLED" className="bg-[#0f091f] text-red-300">Refunded ({totalCancelled})</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
+          </div>
+
+          {/* Dynamic Pass Type Filter */}
+          <div className="relative">
+            <select
+              value={passFilter}
+              onChange={(e) => setPassFilter(e.target.value)}
+              className="h-9 appearance-none pl-3 pr-7 bg-black/60 border border-white/15 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-neon-cyan cursor-pointer hover:bg-white/5 transition-all"
+            >
+              <option value="all" className="bg-[#0f091f] text-white">All Passes</option>
+              {packages.map((pkg) => (
+                <option key={pkg.key || pkg._id} value={pkg.key} className="bg-[#0f091f] text-white">
+                  {pkg.title || pkg.key}
+                </option>
+              ))}
             </select>
             <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
           </div>
@@ -368,7 +434,11 @@ export default function AttendeesPage({
 
                     {/* Pass Type & Payment Mode */}
                     <td className="py-3.5 px-4">
-                      <div className="font-medium text-white capitalize">{t.eventType} Pass</div>
+                      <div className="font-medium text-white capitalize">
+                        {packages.find((p) => p.key?.toLowerCase() === t.eventType?.toLowerCase())?.title ||
+                          t.eventTitle ||
+                          `${(t.eventType || 'adult').replace(/[_-]+/g, ' ')} Pass`}
+                      </div>
                       <div className="text-[10px] text-neon-pink font-semibold flex items-center gap-1">
                         <CreditCard size={11} />
                         <span>{t.paymentMode || 'Online UPI'} • ₹{t.amountPaid}</span>
@@ -445,6 +515,16 @@ export default function AttendeesPage({
                         >
                           Timeline <ArrowRight size={11} />
                         </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setTicketToDelete(t)
+                          }}
+                          className="p-1.5 rounded-lg text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                          title="Delete Ticket"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -517,7 +597,10 @@ export default function AttendeesPage({
                   </button>
                 </div>
                 <div className="text-[11px] text-neon-pink capitalize font-semibold">
-                  {selectedTicket.eventType} Pass • ₹{selectedTicket.amountPaid}
+                  {selectedTicket.eventTitle ||
+                    packages.find((p) => p.key?.toLowerCase() === selectedTicket.eventType?.toLowerCase())?.title ||
+                    `${(selectedTicket.eventType || 'adult').replace(/[_-]+/g, ' ')} Pass`}{' '}
+                  • ₹{selectedTicket.amountPaid}
                 </div>
               </div>
             </div>
@@ -640,10 +723,20 @@ export default function AttendeesPage({
             </div>
 
             {/* Modal Footer */}
-            <div className="mt-8 pt-4 border-t border-white/10 flex items-center justify-end">
+            <div className="mt-8 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
               <button
+                type="button"
+                onClick={() => setTicketToDelete(selectedTicket)}
+                className="h-10 px-4 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap"
+              >
+                <Trash2 size={13} className="shrink-0" />
+                <span>Delete Ticket</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setSelectedTicket(null)}
-                className="px-5 py-2.5 rounded-xl bg-neon-cyan text-[#071016] font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer"
+                className="h-10 px-5 rounded-xl bg-neon-cyan text-[#071016] font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
               >
                 Close Audit
               </button>
@@ -658,6 +751,57 @@ export default function AttendeesPage({
         ticket={previewTicket}
         onClose={() => setPreviewTicket(null)}
       />
+
+      {/* CONFIRM DELETE TICKET MODAL */}
+      {ticketToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+          <div className="relative w-full max-w-md bg-[#0f091f] border border-rose-500/30 rounded-2xl p-6 text-white shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-base font-bold text-white">Delete Booked Ticket?</h4>
+                <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                  Are you sure you want to permanently delete ticket{' '}
+                  <strong className="text-white font-mono">{ticketToDelete.ticketId}</strong> for{' '}
+                  <strong className="text-white">{ticketToDelete.customerName}</strong>?
+                  This will revoke their entry and remove all ticket records.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                disabled={isDeletingTicket}
+                onClick={() => setTicketToDelete(null)}
+                className="h-10 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingTicket}
+                onClick={handleDeleteTicket}
+                className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-lg shadow-rose-900/30 whitespace-nowrap"
+              >
+                {isDeletingTicket ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={13} />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

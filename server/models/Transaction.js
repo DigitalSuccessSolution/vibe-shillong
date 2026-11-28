@@ -42,8 +42,8 @@ const transactionSchema = new mongoose.Schema(
     },
     eventType: {
       type: String,
-      enum: ['kids', 'adult', 'vip'],
       required: true,
+      trim: true,
     },
     quantity: {
       type: Number,

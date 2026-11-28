@@ -32,6 +32,22 @@ export default function MyBookingsPage({
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState(null)
+  const [activePackages, setActivePackages] = useState(packages)
+
+  useEffect(() => {
+    if (packages && packages.length > 0) {
+      setActivePackages(packages)
+    } else {
+      fetch(`${API_BASE_URL}/api/packages`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.packages) && data.packages.length > 0) {
+            setActivePackages(data.packages)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [packages])
 
   const fetchMyTickets = async () => {
     if (!user?.email) {
@@ -264,15 +280,49 @@ export default function MyBookingsPage({
                   const isUsed = rawStatus === 'USED'
                   const passType = (t.eventType || 'adult').toLowerCase()
 
+                  const matchedPkg = activePackages.find(
+                    (p) => p.key?.toLowerCase() === t.eventType?.toLowerCase()
+                  )
+
+                  const pkgColor = (
+                    matchedPkg?.color ||
+                    (passType === 'vip' ? 'lime' : passType === 'kids' ? 'cyan' : 'pink')
+                  ).toLowerCase()
+
                   const badgeBorder =
-                    passType === 'vip'
+                    pkgColor === 'lime'
                       ? 'border-neon-lime/40 bg-neon-lime/15 text-neon-lime'
-                      : passType === 'kids'
+                      : pkgColor === 'cyan'
                       ? 'border-neon-cyan/40 bg-neon-cyan/15 text-neon-cyan'
                       : 'border-neon-pink/40 bg-neon-pink/15 text-neon-pink'
 
-                  const timingText =
-                    passType === 'kids' ? '12:00 PM – 7:30 PM' : '8:00 PM Onwards'
+                  // Full, authentic pass title - never abbreviated to raw short slug
+                  const passTitleDisplay = (() => {
+                    if (matchedPkg?.title) {
+                      const upper = matchedPkg.title.toUpperCase().trim()
+                      return upper.endsWith('PASS') ? upper : `${upper} PASS`
+                    }
+                    if (t.eventTitle) {
+                      const stripped = t.eventTitle.replace(/\s*\([^)]*\)/g, '').replace(/[_-]+/g, ' ').trim().toUpperCase()
+                      if (stripped) {
+                        return stripped.endsWith('PASS') ? stripped : `${stripped} PASS`
+                      }
+                    }
+                    const clean = (t.eventType || 'adult')
+                      .replace(/[_-]+/g, ' ')
+                      .trim()
+                      .toUpperCase()
+                    return clean.endsWith('PASS') ? clean : `${clean} PASS`
+                  })()
+
+                  const timingText = (() => {
+                    if (matchedPkg?.timing) return matchedPkg.timing
+                    if (t.eventTitle) {
+                      const match = t.eventTitle.match(/\(([^)]+)\)/)
+                      if (match && match[1]) return match[1]
+                    }
+                    return passType === 'kids' ? '12:00 PM – 7:30 PM' : '8:00 PM Onwards'
+                  })()
 
                   return (
                     <div
@@ -287,9 +337,9 @@ export default function MyBookingsPage({
                       <div className="space-y-3">
                         <div className="flex items-center justify-between gap-2">
                           <span
-                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold font-space uppercase tracking-wider border ${badgeBorder}`}
+                            className={`px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-bold font-space uppercase tracking-wider border ${badgeBorder}`}
                           >
-                            {t.eventType} Pass
+                            {passTitleDisplay}
                           </span>
 
                           {isCancelled ? (

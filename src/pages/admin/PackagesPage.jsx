@@ -2,6 +2,44 @@ import { useState, useEffect } from 'react'
 import { Trash2 } from 'lucide-react'
 import { API_BASE_URL } from '../../config/api'
 
+// Helper to automatically generate clean, short, unique slug from Pass Title
+function generateShortKey(title = '', existingPackages = []) {
+  if (!title || !title.trim()) return ''
+  const stopWords = new Set([
+    'with', 'and', 'the', 'for', 'at', 'by', 'in', 'on', 'of', 'to',
+    'pass', 'passes', 'ticket', 'tickets', 'package', 'packages', 'entry', 'neon', 'special'
+  ])
+
+  const words = title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((w) => w && !stopWords.has(w))
+
+  let baseKey = ''
+  if (words.length >= 2) {
+    baseKey = `${words[0].slice(0, 5)}_${words[1].slice(0, 5)}`
+  } else if (words.length === 1) {
+    baseKey = words[0].slice(0, 8)
+  } else {
+    baseKey = title.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6) || 'pass'
+  }
+
+  // Ensure uniqueness across existing packages ("same nahi ho")
+  const existingKeys = new Set(existingPackages.map((p) => (p.key || '').toLowerCase().trim()))
+  let finalKey = baseKey
+  let attempt = 0
+
+  while (existingKeys.has(finalKey.toLowerCase())) {
+    attempt++
+    const suffix = Math.random().toString(36).substring(2, 4)
+    finalKey = `${baseKey}_${suffix}`
+    if (attempt > 10) break
+  }
+
+  return finalKey
+}
+
 export default function PackagesPage() {
   const [packages, setPackages] = useState([])
   const [loading, setLoading] = useState(true)
@@ -199,7 +237,20 @@ export default function PackagesPage() {
 
         <button
           type="button"
-          onClick={() => setIsAddingNew(true)}
+          onClick={() => {
+            setNewPkg({
+              key: '',
+              title: '',
+              price: '',
+              badge: 'Special Pass',
+              timing: '8:00 PM Onwards',
+              subtitle: 'Official festival entry pass',
+              color: 'pink',
+              features: ['Stage access', 'Welcome drink token'],
+              popular: false,
+            })
+            setIsAddingNew(true)
+          }}
           className="px-4 py-2 rounded-xl bg-neon-pink text-[#080612] font-bold text-xs uppercase tracking-wider hover:opacity-90 transition-all cursor-pointer"
         >
           + Add New Package
@@ -460,24 +511,49 @@ export default function PackagesPage() {
 
             {/* Form: Clean, Flat, No Nested Card Divs */}
             <form onSubmit={handleCreateNewPackage} className="space-y-4 text-xs">
+              <div>
+                <label className="text-white/70 font-semibold block mb-1">
+                  Pass Title *
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. Girls Platinum Pass, Couple Night Pass"
+                  value={newPkg.title}
+                  onChange={(e) => {
+                    const title = e.target.value
+                    const autoKey = generateShortKey(title, packages)
+                    setNewPkg((prev) => ({
+                      ...prev,
+                      title,
+                      key: autoKey,
+                    }))
+                  }}
+                  className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3.5 py-2.5 text-white font-medium text-sm focus:outline-none focus:border-neon-pink"
+                />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="text-white/70 font-semibold block mb-1">
                     Unique Key (Slug)
                   </label>
                   <input
-                    required
+                    readOnly
                     type="text"
-                    placeholder="e.g. couple, earlybird"
+                    tabIndex={-1}
+                    placeholder="Auto-generated from title..."
                     value={newPkg.key}
-                    onChange={(e) => setNewPkg({ ...newPkg, key: e.target.value.toLowerCase().replace(/\s+/g, '') })}
-                    className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3.5 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-neon-pink"
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3.5 py-2.5 text-neon-cyan font-mono text-sm cursor-not-allowed select-none focus:outline-none"
                   />
+                  <span className="text-[10px] text-white/40 block mt-1">
+                    {newPkg.key ? `🔒 Auto short & unique ID: "${newPkg.key}"` : '🔒 Auto-generated from title (Read-only)'}
+                  </span>
                 </div>
 
                 <div>
                   <label className="text-white/70 font-semibold block mb-1">
-                    Price (₹ INR)
+                    Price (₹ INR) *
                   </label>
                   <input
                     required
@@ -492,20 +568,6 @@ export default function PackagesPage() {
                     className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3.5 py-2.5 text-emerald-400 font-bold text-sm font-space focus:outline-none focus:border-emerald-400"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-white/70 font-semibold block mb-1">
-                  Pass Title
-                </label>
-                <input
-                  required
-                  type="text"
-                  placeholder="e.g. Couple Neon Night Pass"
-                  value={newPkg.title}
-                  onChange={(e) => setNewPkg({ ...newPkg, title: e.target.value })}
-                  className="w-full bg-white/[0.04] border border-white/15 rounded-xl px-3.5 py-2.5 text-white font-medium text-sm focus:outline-none focus:border-neon-pink"
-                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

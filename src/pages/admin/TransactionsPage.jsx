@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Download, CheckCircle2, Copy, Check, RefreshCw, Plus, XCircle, AlertTriangle, X, ChevronDown } from 'lucide-react'
+import { Search, Download, CheckCircle2, Copy, Check, RefreshCw, Plus, XCircle, AlertTriangle, X, ChevronDown, Trash2 } from 'lucide-react'
 import Pagination from '../../components/admin/Pagination'
 import DateFilter, { matchesDateFilter } from '../../components/admin/DateFilter'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -28,6 +28,10 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
 
   // 300ms Search Debounce
   const debouncedSearchQuery = useDebounce(searchQuery, 300)
+
+  // Delete Transaction State
+  const [txToDelete, setTxToDelete] = useState(null)
+  const [isDeletingTx, setIsDeletingTx] = useState(false)
 
   // Modal: Add / Record Counter Payment
   const [isAddingOffline, setIsAddingOffline] = useState(false)
@@ -232,6 +236,37 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
     }
   }
 
+  // Delete Transaction
+  const handleDeleteTransaction = async () => {
+    if (!txToDelete) return
+    setIsDeletingTx(true)
+    try {
+      const id = txToDelete._id || txToDelete.transactionId
+      const res = await fetch(`${API_BASE_URL}/api/transactions/${id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json()
+      if (data.success) {
+        setTransactionsList((prev) =>
+          prev.filter((t) => t._id !== txToDelete._id && t.transactionId !== txToDelete.transactionId)
+        )
+        if (
+          selectedTx &&
+          (selectedTx._id === txToDelete._id || selectedTx.transactionId === txToDelete.transactionId)
+        ) {
+          setSelectedTx(null)
+        }
+        setTxToDelete(null)
+      } else {
+        alert(data.message || 'Error deleting transaction.')
+      }
+    } catch (err) {
+      alert('Delete failed: ' + err.message)
+    } finally {
+      setIsDeletingTx(false)
+    }
+  }
+
   // Export CSV
   const handleExportCSV = () => {
     if (transactionsList.length === 0) {
@@ -391,6 +426,23 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
               <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
             </div>
 
+            {/* Dynamic Pass Type Filter */}
+            <div className="relative">
+              <select
+                value={passFilter}
+                onChange={(e) => setPassFilter(e.target.value)}
+                className="h-9 appearance-none pl-3 pr-7 bg-black/60 border border-white/15 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-neon-cyan cursor-pointer hover:bg-white/5 transition-all"
+              >
+                <option value="all" className="bg-[#0f091f] text-white">All Passes</option>
+                {packages.map((pkg) => (
+                  <option key={pkg.key || pkg._id} value={pkg.key} className="bg-[#0f091f] text-white">
+                    {pkg.title || pkg.key}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none" />
+            </div>
+
             {/* Date Filter */}
             <DateFilter
               datePreset={datePreset}
@@ -514,7 +566,9 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                       {/* Pass Tier & Ticket ID */}
                       <td className="py-3.5 px-4">
                         <div className="font-medium text-white capitalize">
-                          {tx.eventType} Pass
+                          {packages.find((p) => p.key?.toLowerCase() === tx.eventType?.toLowerCase())?.title ||
+                            tx.eventTitle ||
+                            `${(tx.eventType || 'adult').replace(/[_-]+/g, ' ')} Pass`}
                         </div>
                         {tx.ticketId && (
                           <span className="text-[10px] text-neon-pink font-mono font-bold">
@@ -579,11 +633,31 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                         )}
                       </td>
 
-                      {/* View Button */}
+                      {/* Action Buttons */}
                       <td className="py-3.5 px-4 text-right">
-                        <span className="text-[11px] text-neon-cyan font-bold group-hover:underline">
-                          View Receipt →
-                        </span>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedTx(tx)
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-neon-cyan/10 hover:bg-neon-cyan/20 border border-neon-cyan/30 text-neon-cyan text-[11px] font-bold transition-all cursor-pointer"
+                          >
+                            Receipt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setTxToDelete(tx)
+                            }}
+                            className="p-1.5 rounded-lg text-white/30 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Delete transaction"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -879,33 +953,95 @@ export default function TransactionsPage({ ticketsList: propTickets = [] }) {
                 <div className="flex justify-between py-1">
                   <span className="text-white/60">Pass Type & Quantity</span>
                   <span className="text-neon-cyan font-bold capitalize">
-                    {selectedTx.eventType} Pass ({selectedTx.quantity || 1} {selectedTx.quantity === 1 ? 'ticket' : 'tickets'})
+                    {packages.find((p) => p.key?.toLowerCase() === selectedTx.eventType?.toLowerCase())?.title ||
+                      selectedTx.eventTitle ||
+                      `${(selectedTx.eventType || 'adult').replace(/[_-]+/g, ' ')} Pass`} ({selectedTx.quantity || 1} {selectedTx.quantity === 1 ? 'ticket' : 'tickets'})
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between gap-3">
+            <div className="mt-5 pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               {selectedTx.status === 'SUCCESS' ? (
                 <button
                   type="button"
                   disabled={isRefunding}
                   onClick={() => handleRefundTransaction(selectedTx.transactionId)}
-                  className="px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  className="h-10 px-3.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap disabled:opacity-50 w-full sm:w-auto"
                 >
-                  <AlertTriangle size={13} />
-                  {isRefunding ? 'Processing Refund...' : 'Refund & Cancel Pass'}
+                  <AlertTriangle size={13} className="shrink-0" />
+                  <span>{isRefunding ? 'Refunding...' : 'Refund & Cancel'}</span>
                 </button>
               ) : (
-                <div />
+                <div className="hidden sm:block" />
               )}
 
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setTxToDelete(selectedTx)}
+                  className="flex-1 sm:flex-none h-10 px-4 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap"
+                >
+                  <Trash2 size={13} className="shrink-0" />
+                  <span>Delete</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTx(null)}
+                  className="flex-1 sm:flex-none h-10 px-5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* CONFIRM DELETE MODAL */}
+      {txToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+          <div className="relative w-full max-w-md bg-[#0f091f] border border-rose-500/30 rounded-2xl p-6 text-white shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-base font-bold text-white">Delete Transaction?</h4>
+                <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                  Are you sure you want to delete transaction{' '}
+                  <strong className="text-white font-mono">{txToDelete.transactionId}</strong> for{' '}
+                  <strong className="text-white">{txToDelete.customerName}</strong> (₹{txToDelete.amount})?
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-3 border-t border-white/10">
               <button
                 type="button"
-                onClick={() => setSelectedTx(null)}
-                className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                disabled={isDeletingTx}
+                onClick={() => setTxToDelete(null)}
+                className="h-10 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
               >
-                Close Receipt
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingTx}
+                onClick={handleDeleteTransaction}
+                className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-lg shadow-rose-900/30 whitespace-nowrap"
+              >
+                {isDeletingTx ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={13} />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

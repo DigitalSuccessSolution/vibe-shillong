@@ -188,4 +188,34 @@ router.post('/:id/refund', async (req, res) => {
   }
 })
 
+/**
+ * 4. Delete a Transaction (Admin)
+ * DELETE /api/transactions/:id
+ */
+router.delete('/:id', async (req, res) => {
+  try {
+    const q = req.params.id.trim()
+    const isValidId = mongoose.Types.ObjectId.isValid(q)
+    const deleted = await Transaction.findOneAndDelete({
+      $or: [
+        { transactionId: q },
+        ...(isValidId ? [{ _id: q }] : []),
+      ],
+    })
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Transaction not found.' })
+    }
+
+    return res.json({
+      success: true,
+      message: `Transaction "${deleted.transactionId}" deleted successfully.`,
+      deleted,
+    })
+  } catch (error) {
+    console.error('Delete Transaction Error:', error)
+    return res.status(500).json({ success: false, message: error.message })
+  }
+})
+
 export default router

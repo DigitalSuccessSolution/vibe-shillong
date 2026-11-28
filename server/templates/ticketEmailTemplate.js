@@ -45,6 +45,21 @@ export function generateTicketEmailHtml(ticket) {
   }
   const timingText = eventTimings[eventTypeKey] || '8:00 PM Onwards'
 
+  const passTitleDisplay = (() => {
+    if (ticket.eventTitle) {
+      const stripped = ticket.eventTitle.replace(/\s*\([^)]*\)/g, '').replace(/[_-]+/g, ' ').trim()
+      if (stripped.length > 0) {
+        const upper = stripped.toUpperCase()
+        return upper.endsWith('PASS') ? upper : `${upper} PASS`
+      }
+    }
+    const clean = (ticket.eventType || 'adult')
+      .replace(/[_-]+/g, ' ')
+      .trim()
+      .toUpperCase()
+    return clean.endsWith('PASS') ? clean : `${clean} PASS`
+  })()
+
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(ticketId)}&color=080414&bgcolor=ffffff`
 
   return `
@@ -145,7 +160,7 @@ export function generateTicketEmailHtml(ticket) {
                         </td>
                         <td align="right" valign="middle">
                           <span style="display: inline-block; background-color: ${theme.badgeBg}; color: ${theme.badgeText}; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 11px; border-radius: 16px;">
-                            ${eventTypeKey.toUpperCase()} PASS
+                            ${passTitleDisplay}
                           </span>
                         </td>
                       </tr>

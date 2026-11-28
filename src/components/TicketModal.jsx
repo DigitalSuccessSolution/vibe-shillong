@@ -111,6 +111,22 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
   const customerNameDisplay = ticket.customerName || 'Verified Attendee'
   const quantity = Number(ticket.quantity) || 1
 
+  // Clean, professional pass title (no underscores or raw internal keys)
+  const passTitleDisplay = (() => {
+    if (ticket.eventTitle) {
+      const stripped = ticket.eventTitle.replace(/\s*\([^)]*\)/g, '').replace(/[_-]+/g, ' ').trim()
+      if (stripped.length > 0) {
+        const upper = stripped.toUpperCase()
+        return upper.endsWith('PASS') ? upper : `${upper} PASS`
+      }
+    }
+    const clean = (ticket.eventType || 'adult')
+      .replace(/[_-]+/g, ' ')
+      .trim()
+      .toUpperCase()
+    return clean.endsWith('PASS') ? clean : `${clean} PASS`
+  })()
+
   const rawStatus = (ticket.status || 'VALID').toUpperCase()
   const isCancelled = rawStatus.includes('CANCEL') || rawStatus === 'VOID'
   const isUsed = rawStatus === 'USED'
@@ -171,8 +187,8 @@ export default function TicketModal({ isOpen, onClose, ticket, autoDownload = fa
                   </div>
                 </div>
 
-                <span className={`px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase shrink-0 ${currentTheme.badge}`}>
-                  {eventTypeKey.toUpperCase()} PASS
+                <span className={`px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black tracking-wider uppercase shrink-0 whitespace-nowrap ${currentTheme.badge}`}>
+                  {passTitleDisplay}
                 </span>
               </div>
 
